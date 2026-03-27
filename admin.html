@@ -7,89 +7,100 @@
     <title>Navodaya Admin - Librarian</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Google Fonts: Outfit & Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
     <style>
         .admin-header {
-            background-color: #374151;
+            background: linear-gradient(135deg, #1e293b, #0f172a);
         }
 
         .header-actions {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            width: 100%;
         }
 
         .logout-btn {
-            background: rgba(255, 255, 255, 0.2);
-            border: none;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: white;
-            padding: 4px 12px;
+            padding: 6px 14px;
             border-radius: 12px;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .logout-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
         }
 
         .req-card {
-            flex-direction: column;
-            gap: 12px;
-            margin-bottom: 12px;
+            background: white;
+            padding: 20px;
+            border-radius: var(--radius-lg);
+            box-shadow: var(--shadow-sm);
+            border: 1px solid var(--border-color);
+            margin-bottom: 16px;
         }
 
         .req-header {
             display: flex;
             justify-content: space-between;
-            border-bottom: 1px solid var(--border-color);
-            padding-bottom: 8px;
-            color: var(--text-secondary);
-            font-size: 14px;
+            border-bottom: 2px solid var(--bg-color);
+            padding-bottom: 12px;
+            margin-bottom: 12px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
-        .req-body {
+        .req-user {
+            color: var(--primary-color);
+            font-weight: 800;
+        }
+
+        .req-info {
             display: flex;
             gap: 16px;
-        }
-
-        .req-actions {
-            display: flex;
-            gap: 8px;
-            margin-top: 8px;
+            align-items: center;
         }
 
         .edit-book-btn {
-            background: transparent;
-            border: none;
-            font-size: 16px;
-            color: #1976d2;
-            margin-right: 8px;
-            cursor: pointer;
-        }
-
-        .delete-book-btn {
-            background: transparent;
-            border: none;
-            font-size: 16px;
-            color: var(--danger-color);
-            cursor: pointer;
-        }
-
-        .login-container {
-            height: 100vh;
+            background: #eff6ff;
+            color: #2563eb;
+            width: 40px;
+            height: 40px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            background: var(--bg-color);
-            padding: 16px;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
 
-        .login-box {
-            background: white;
-            padding: 32px;
+        .delete-book-btn {
+            background: #fff1f2;
+            color: #e11d48;
+            width: 40px;
+            height: 40px;
             border-radius: 12px;
-            width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            text-align: center;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
         }
     </style>
 </head>
@@ -98,18 +109,21 @@
 
     <!-- Admin Login Screen -->
     <div id="admin-login-screen" class="login-container">
-        <div class="login-box">
-            <h2 style="color:var(--primary-color); margin-bottom:24px;">Librarian Portal</h2>
+        <div class="login-box" style="padding: 40px; border-radius: 24px; box-shadow: var(--shadow-lg);">
+            <div style="font-size: 48px; margin-bottom: 16px;">🔑</div>
+            <h2 style="color:var(--primary-color); margin-bottom:12px; font-weight: 800; letter-spacing: -1px; font-size: 28px;">Librarian Portal</h2>
+            <p style="color:var(--text-secondary); margin-bottom: 32px; font-size: 15px;">Enter your admin password to manage inventory and requests.</p>
+            
             <form id="admin-login-form">
                 <div class="input-group">
                     <label style="text-align:left;">Admin Password</label>
-                    <input type="password" id="admin-password" placeholder="Enter password (e.g. 'c')" required>
+                    <input type="password" id="admin-password" placeholder="••••••••" required>
                 </div>
-                <button type="submit" class="btn btn-primary w-100">Login</button>
+                <button type="submit" class="btn btn-primary w-100" style="padding: 16px;">Access Dashboard</button>
             </form>
             <a href="index.html"
-                style="display:block; margin-top:24px; color:var(--text-secondary); text-decoration:none; font-size:14px;">&larr;
-                Back to Public Library</a>
+                style="display:block; margin-top:32px; color:var(--text-muted); text-decoration:none; font-size:13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">&larr;
+                Public Library</a>
         </div>
     </div>
 

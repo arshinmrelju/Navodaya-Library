@@ -111,20 +111,20 @@ function navigateTo(viewId, action = null) {
         header.style.display = 'none';
         bottomNav.style.display = 'none';
     } else {
-        header.style.display = 'block';
+        header.style.display = 'grid';
         bottomNav.style.display = 'flex';
     }
 
     if (viewId === 'library-view') {
-        headerTitle.textContent = `Library`;
+        headerTitle.textContent = `Browse Catalog`;
         renderLibraryView();
         if (action === 'focus-search') {
             document.getElementById('search-input').focus();
         }
     } else if (viewId === 'map-view') {
-        headerTitle.textContent = 'Digital Map';
+        headerTitle.textContent = 'Library Map';
     } else if (viewId === 'my-books-view') {
-        headerTitle.textContent = 'My Books';
+        headerTitle.textContent = 'My Requests';
         if (!currentUser) {
             openAuthModal("Enter details to view your books");
             document.getElementById('borrowed-list').innerHTML = `
@@ -163,7 +163,12 @@ function renderLibraryView(searchQuery = '') {
         listContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">No books found.</p>';
         return;
     } else if (libraryData.books.length === 0) {
-        listContainer.innerHTML = '<p style="text-align: center; color: var(--text-secondary); margin-top: 20px;">Loading books...</p>';
+        listContainer.innerHTML = `
+            <div class="loading-spinner">
+                <div class="spinner"></div>
+                <p>Curating your library...</p>
+            </div>
+        `;
         return;
     }
 
@@ -196,13 +201,15 @@ function renderLibraryView(searchQuery = '') {
         const card = document.createElement('div');
         card.className = 'book-card';
         card.innerHTML = `
-            <div class="book-img-placeholder" style="background-color: var(--primary-light)20; color: var(--primary-color)">
+            <div class="book-img-placeholder">
                 📚
             </div>
             <div class="book-info">
                 <h3 class="book-title">${book.title}</h3>
                 <p class="book-author">${book.author}</p>
-                <p style="font-size:12px; color:var(--text-secondary); margin-bottom:8px;">📍 ${locationText}</p>
+                <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px; font-weight:700; margin-bottom:10px;">
+                    <span>📍</span> ${locationText}
+                </div>
                 ${statusHtml}
             </div>
         `;
@@ -232,20 +239,21 @@ function showBookDetail(book, myRequest) {
     }
 
     container.innerHTML = `
-        <div class="detail-img-container" style="background-color: var(--primary-light)10; color: var(--primary-color)">
+        <div class="detail-img-container">
             📖
         </div>
         <h2 class="detail-title">${book.title}</h2>
-        <p class="detail-author">By ${book.author}</p>
+        <p class="detail-author">${book.author}</p>
         
-        <div style="background-color:#e0f2f1; padding:12px 16px; border-radius:8px; margin-bottom:16px; border-left:4px solid var(--primary-light);">
-            <p style="font-size:14px; color:#004d40; margin:0;">
-                <span style="font-size:16px; margin-right:4px;">📍</span> 
-                Location: <b>${book.section}</b> &rarr; <b>Shelf ${book.shelf_number}</b>
-            </p>
+        <div class="glass" style="padding:16px 20px; border-radius:var(--radius-md); margin-bottom:24px; display:flex; align-items:center; gap:12px;">
+            <div style="font-size:24px;">📍</div>
+            <div>
+                <p style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text-muted); letter-spacing:1px; margin:0;">Location</p>
+                <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${book.section} • Shelf ${book.shelf_number}</p>
+            </div>
         </div>
 
-        <p class="detail-desc">Search and request books easily with the Navodaya Library Assistant.</p>
+        <p class="detail-desc">This copy is kept in the ${book.section} section. Use our digital map to locate the exact shelf.</p>
         <div class="detail-actions">
             ${actionBtnHtml}
         </div>
@@ -284,6 +292,10 @@ window.logoutUser = function () {
     window.location.reload();
 };
 
+// Export to window for inline onclick handlers
+window.navigateTo = navigateTo;
+window.updateNavActive = updateNavActive;
+
 async function processRequestBook(bookId) {
     const book = libraryData.books.find(b => b.id === bookId);
     if (book && book.available) {
@@ -315,8 +327,13 @@ function renderMyBooksView() {
     listContainer.innerHTML = '';
 
     document.getElementById('my-books-header').innerHTML = `
-        <p style="font-size:14px; margin-bottom:4px;">Logged in as: <strong>${currentUser.name}</strong> (${currentUser.phone})</p>
-        <button onclick="logoutUser()" class="btn btn-danger" style="font-size:12px; padding:4px 8px;">Logout</button>
+        <div class="glass" style="padding:16px; border-radius:var(--radius-md); margin-bottom:24px; display:flex; align-items:center; justify-content:space-between;">
+            <div>
+                <p style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text-muted); letter-spacing:1px; margin:0;">Verified User</p>
+                <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${currentUser.name}</p>
+            </div>
+            <button onclick="logoutUser()" class="btn" style="background:var(--danger-color); color:white; padding:8px 12px; font-size:12px; border-radius:8px;">Logout</button>
+        </div>
     `;
 
     if (libraryData.requests.length === 0) {
@@ -351,15 +368,17 @@ function renderMyBooksView() {
         const card = document.createElement('div');
         card.className = 'book-card';
         card.innerHTML = `
-            <div class="book-img-placeholder" style="background-color: var(--primary-light)20; color: var(--primary-color)">
+            <div class="book-img-placeholder">
                 📚
             </div>
             <div class="book-info">
-                <h3 class="book-title">${req.bookTitle || 'Book'}</h3>
-                <span class="status-badge" style="color:${color}; background-color:${bg};">${statusHtml}</span>
-                <p style="font-size:11px; margin-top:8px; color:var(--text-secondary);">
-                    ${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}
-                </p>
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
+                    <h3 class="book-title" style="margin:0;">${req.bookTitle || 'Book'}</h3>
+                </div>
+                <div style="margin-bottom:12px;">${statusHtml}</div>
+                <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:11px; font-weight:700;">
+                    <span>🕒</span> ${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}
+                </div>
             </div>
         `;
         

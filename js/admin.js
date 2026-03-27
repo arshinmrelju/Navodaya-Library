@@ -102,6 +102,7 @@ function navigateTo(viewId) {
         renderInventory();
     }
 }
+window.navigateTo = navigateTo;
 
 function renderRequests() {
     const list = document.getElementById('pending-list');
@@ -118,17 +119,19 @@ function renderRequests() {
         card.className = 'book-card req-card';
         card.innerHTML = `
             <div class="req-header">
-                <span><strong>${req.userName}</strong> (${req.userPhone})</span>
-                <span>${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleTimeString() : '...'}</span>
+                <span class="req-user">${req.userName}</span>
+                <span>${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...'}</span>
             </div>
-            <div class="req-body">
+            <div class="req-info" style="margin-bottom:20px;">
+                <div class="book-img-placeholder" style="width:50px; height:70px; font-size:24px;">📚</div>
                 <div class="book-info">
-                    <h3 class="book-title" style="font-size:14px;">${req.bookTitle}</h3>
+                    <h3 class="book-title" style="font-size:16px; margin:0;">${req.bookTitle}</h3>
+                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">ID: ${req.userPhone}</p>
                 </div>
             </div>
-            <div class="req-actions">
-                <button class="btn btn-primary" style="padding: 8px 16px; font-size:14px; flex:1;" id="approve-${req.id}">Approve</button>
-                <button class="btn btn-danger" style="padding: 8px 16px; font-size:14px; flex:1;" id="reject-${req.id}">Reject</button>
+            <div class="req-actions" style="display:flex; gap:12px;">
+                <button class="btn btn-primary" style="flex:1; padding:12px;" id="approve-${req.id}">Approve</button>
+                <button class="btn" style="flex:1; padding:12px; background:var(--bg-color); color:var(--text-secondary);" id="reject-${req.id}">Reject</button>
             </div>
         `;
         list.appendChild(card);
@@ -192,16 +195,19 @@ function renderInventory() {
         card.className = 'book-card';
         card.style.alignItems = 'center';
         card.innerHTML = `
+            <div class="book-img-placeholder" style="width:60px; height:80px; font-size:28px;">
+                📚
+            </div>
             <div class="book-info">
-                <h3 class="book-title">${book.title}</h3>
-                <p class="book-author">${book.author}</p>
+                <h3 class="book-title" style="font-size:16px;">${book.title}</h3>
+                <p class="book-author" style="font-size:13px; margin-bottom:8px;">${book.author}</p>
                 <span class="status-badge ${book.available ? 'status-available' : 'status-borrowed'}">
                     ${book.available ? 'Available' : 'Unavailable'}
                 </span>
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px;">
-                <button class="edit-book-btn" id="edit-${book.id}">✏️</button>
-                <button class="delete-book-btn" id="delete-${book.id}">🗑️</button>
+            <div style="display:flex; gap:8px;">
+                <button class="edit-book-btn" id="edit-${book.id}" title="Edit">✏️</button>
+                <button class="delete-book-btn" id="delete-${book.id}" title="Delete">🗑️</button>
             </div>
         `;
         list.appendChild(card);

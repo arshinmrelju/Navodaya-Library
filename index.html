@@ -5,17 +5,17 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Navodaya Library</title>
-    <!-- Google Fonts for Roboto -->
+    <!-- Google Fonts: Outfit & Inter -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;800&family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
 
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
 
     <style>
-        /* Modal Styles */
+        /* Modal Styles Refined */
         .modal-overlay {
             display: none;
             position: fixed;
@@ -23,35 +23,70 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 100;
+            z-index: 1000;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 24px;
         }
 
         .modal-content {
             background: white;
-            padding: 24px;
-            border-radius: 12px;
+            padding: 32px;
             width: 100%;
-            max-width: 400px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            max-width: 420px;
         }
 
         .modal-content h3 {
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             color: var(--primary-color);
+            font-size: 24px;
+            font-weight: 800;
+            letter-spacing: -0.5px;
         }
 
         .close-modal {
             background: none;
             border: none;
-            color: var(--text-secondary);
-            font-size: 14px;
-            margin-top: 16px;
+            color: var(--text-muted);
+            font-size: 13px;
+            font-weight: 700;
+            margin-top: 24px;
             width: 100%;
             text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            cursor: pointer;
+        }
+
+        /* Hero Section Polish */
+        .hero-icon {
+            font-size: 100px;
+            margin-bottom: 24px;
+            filter: drop-shadow(0 10px 15px rgba(8, 51, 68, 0.2));
+            animation: float 4s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .welcome-title {
+            color: var(--primary-color);
+            margin-bottom: 40px;
+            text-align: center;
+            font-size: 36px;
+            font-weight: 800;
+            line-height: 1.1;
+            letter-spacing: -1.5px;
+        }
+        
+        .welcome-title span {
+            color: var(--primary-light);
+            display: block;
+            font-size: 24px;
+            font-weight: 500;
+            letter-spacing: 0;
         }
     </style>
 </head>
@@ -60,7 +95,9 @@
 
     <!-- Top App Bar -->
     <header class="app-header" id="app-header">
-        <h1 class="app-title" id="header-title">Navodaya Library</h1>
+        <button class="header-action" onclick="navigateTo('welcome-view')" id="header-home-btn">🏠</button>
+        <h1 class="app-title" id="header-title">Navodaya</h1>
+        <button class="header-action" onclick="navigateTo('library-view', 'focus-search')" id="header-search-btn">🔍</button>
     </header>
 
     <!-- Main Content Area -->
@@ -68,40 +105,33 @@
 
         <!-- Welcome View -->
         <section id="welcome-view" class="view active-view">
-            <div
-                style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:80vh; padding:24px;">
-                <div style="font-size:80px; margin-bottom:16px;">🏛️</div>
-                <h2
-                    style="color:var(--primary-color); margin-bottom:32px; text-align:center; font-size:28px; line-height:1.3;">
-                    Welcome to<br>Navodaya Library</h2>
-                <div style="width:100%; display:flex; flex-direction:column; gap:16px;">
-                    <button class="btn btn-primary"
-                        style="background-color:var(--primary-light); padding:16px; font-size:18px; display:flex; gap:12px; align-items:center; justify-content:center;"
-                        onclick="navigateTo('library-view')">
+            <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:75vh; padding:24px;">
+                <div class="hero-icon">🏛️</div>
+                <h2 class="welcome-title"><span>Welcome to</span>Navodaya Library</h2>
+                
+                <div style="width:100%; display:flex; flex-direction:column; gap:16px; max-width:400px;">
+                    <button class="btn btn-primary w-100" style="padding:20px; font-size:18px;" onclick="navigateTo('library-view')">
                         <span style="font-size:24px;">📚</span> Browse Books
                     </button>
-                    <button class="btn btn-primary"
-                        style="background-color:var(--primary-light); padding:16px; font-size:18px; display:flex; gap:12px; align-items:center; justify-content:center;"
-                        onclick="navigateTo('map-view')">
-                        <span style="font-size:24px;">🧭</span> Find a Book Location
+                    <button class="btn glass w-100" style="padding:20px; font-size:18px; color:var(--primary-color); font-weight:700;" onclick="navigateTo('map-view')">
+                        <span style="font-size:24px;">🧭</span> Library Map
                     </button>
-                    <button class="btn btn-primary"
-                        style="background-color:var(--primary-color); padding:16px; font-size:18px; display:flex; gap:12px; align-items:center; justify-content:center;"
-                        onclick="navigateTo('library-view')">
-                        <span style="font-size:24px;">📥</span> Request a Book
+                    <button class="btn w-100" style="padding:20px; font-size:18px; background:white; color:var(--text-secondary); border:1px solid var(--border-color);" onclick="navigateTo('my-books-view')">
+                        <span style="font-size:24px;">📥</span> My Requests
                     </button>
                 </div>
-                <div style="margin-top:40px; text-align:center;">
-                    <a href="admin.html"
-                        style="color:var(--text-secondary); font-size:14px; text-decoration:none;">Librarian Login</a>
+                
+                <div style="margin-top:60px; text-align:center;">
+                    <a href="admin.html" style="color:var(--text-muted); font-size:13px; text-decoration:none; font-weight:700; text-transform:uppercase; letter-spacing:1px;">Librarian Portal &rarr;</a>
                 </div>
             </div>
         </section>
 
         <!-- Library Catalog View -->
         <section id="library-view" class="view">
+            <h2 class="view-title">Browse Library</h2>
             <div class="search-container">
-                <input type="text" id="search-input" placeholder="Search books..." class="search-input">
+                <input type="text" id="search-input" placeholder="Search by title or author..." class="search-input">
             </div>
             <div id="book-list" class="book-list">
                 <!-- Books injected by JS -->
