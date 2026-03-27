@@ -26,6 +26,7 @@
     transition: all 0.3s ease;
     color: var(--text-primary);
     -webkit-appearance: none;
+    appearance: none;
 }
 
 .input-group input:focus {
@@ -60,6 +61,7 @@
     background: transparent;
     color: var(--text-primary);
     -webkit-appearance: none;
+    appearance: none;
 }
 
 .search-input:focus {
