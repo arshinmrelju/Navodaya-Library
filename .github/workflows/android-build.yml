@@ -16,12 +16,12 @@ jobs:
         uses: actions/setup-java@v4
         with:
           distribution: 'zulu'
-          java-version: '17'
+          java-version: '21'
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Install Dependencies
         run: npm install
@@ -30,9 +30,11 @@ jobs:
         run: |
           rm -rf dist-librarian
           mkdir dist-librarian
+          cp admin.html dist-librarian/index.html
           cp -r css dist-librarian/
           cp -r js dist-librarian/
-          cp admin.html dist-librarian/index.html
+          echo "Verified dist-librarian content:"
+          ls -R dist-librarian
 
       - name: Sync Capacitor
         run: npx cap sync
@@ -41,7 +43,7 @@ jobs:
         run: |
           cd android
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug --stacktrace
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
