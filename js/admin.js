@@ -123,7 +123,7 @@ function renderRequests() {
                 <span>${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...'}</span>
             </div>
             <div class="req-info" style="margin-bottom:20px;">
-                <div class="book-img-placeholder" style="width:50px; height:70px; font-size:24px;">📚</div>
+                <div class="book-img-placeholder" style="width:50px; height:70px;"><i data-lucide="book" style="width:24px; height:24px;"></i></div>
                 <div class="book-info">
                     <h3 class="book-title" style="font-size:16px; margin:0;">${req.bookTitle}</h3>
                     <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">ID: ${req.userPhone}</p>
@@ -138,6 +138,7 @@ function renderRequests() {
         card.querySelector(`#approve-${req.id}`).onclick = () => updateRequestStatus(req.id, 'borrowed', req.bookId);
         card.querySelector(`#reject-${req.id}`).onclick = () => updateRequestStatus(req.id, 'rejected', req.bookId);
     });
+    lucide.createIcons();
 }
 
 function renderBorrows() {
@@ -170,6 +171,7 @@ function renderBorrows() {
         list.appendChild(card);
         card.querySelector(`#return-${req.id}`).onclick = () => updateRequestStatus(req.id, 'returned', req.bookId);
     });
+    lucide.createIcons();
 }
 
 async function updateRequestStatus(reqId, newStatus, bookId) {
@@ -195,8 +197,8 @@ function renderInventory() {
         card.className = 'book-card';
         card.style.alignItems = 'center';
         card.innerHTML = `
-            <div class="book-img-placeholder" style="width:60px; height:80px; font-size:28px;">
-                📚
+            <div class="book-img-placeholder" style="width:60px; height:80px;">
+                <i data-lucide="book" style="width:28px; height:28px;"></i>
             </div>
             <div class="book-info">
                 <h3 class="book-title" style="font-size:16px;">${book.title}</h3>
@@ -206,14 +208,15 @@ function renderInventory() {
                 </span>
             </div>
             <div style="display:flex; gap:8px;">
-                <button class="edit-book-btn" id="edit-${book.id}" title="Edit">✏️</button>
-                <button class="delete-book-btn" id="delete-${book.id}" title="Delete">🗑️</button>
+                <button class="edit-book-btn" id="edit-${book.id}" title="Edit"><i data-lucide="edit"></i></button>
+                <button class="delete-book-btn" id="delete-${book.id}" title="Delete"><i data-lucide="trash-2"></i></button>
             </div>
         `;
         list.appendChild(card);
         card.querySelector(`#edit-${book.id}`).onclick = () => openBookForm(book.id);
         card.querySelector(`#delete-${book.id}`).onclick = () => deleteBook(book.id);
     });
+    lucide.createIcons();
 }
 
 window.openBookForm = function (bookId = null) {

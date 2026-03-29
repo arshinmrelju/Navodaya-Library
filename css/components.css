@@ -1,4 +1,21 @@
 /* Utility & Component Styles */
+.lucide {
+    width: 20px;
+    height: 20px;
+    stroke-width: 2;
+    vertical-align: middle;
+}
+
+.btn .lucide {
+    width: 22px;
+    height: 22px;
+}
+
+.nav-icon .lucide {
+    width: 24px;
+    height: 24px;
+}
+
 
 /* Forms and Inputs */
 .input-group {

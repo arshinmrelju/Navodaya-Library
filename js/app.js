@@ -202,13 +202,13 @@ function renderLibraryView(searchQuery = '') {
         card.className = 'book-card';
         card.innerHTML = `
             <div class="book-img-placeholder">
-                📚
+                <i data-lucide="book" style="width:40px; height:40px; color:var(--primary-light); opacity:0.5;"></i>
             </div>
             <div class="book-info">
                 <h3 class="book-title">${book.title}</h3>
                 <p class="book-author">${book.author}</p>
                 <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px; font-weight:700; margin-bottom:10px;">
-                    <span>📍</span> ${locationText}
+                    <i data-lucide="map-pin"></i> ${locationText}
                 </div>
                 ${statusHtml}
             </div>
@@ -220,6 +220,7 @@ function renderLibraryView(searchQuery = '') {
         
         listContainer.appendChild(card);
     });
+    lucide.createIcons();
 }
 
 function showBookDetail(book, myRequest) {
@@ -240,13 +241,13 @@ function showBookDetail(book, myRequest) {
 
     container.innerHTML = `
         <div class="detail-img-container">
-            📖
+            <i data-lucide="book-open" style="width:100px; height:100px; color:var(--primary-color);"></i>
         </div>
         <h2 class="detail-title">${book.title}</h2>
         <p class="detail-author">${book.author}</p>
         
         <div class="glass" style="padding:16px 20px; border-radius:var(--radius-md); margin-bottom:24px; display:flex; align-items:center; gap:12px;">
-            <div style="font-size:24px;">📍</div>
+            <div style="color:var(--primary-color);"><i data-lucide="map-pin"></i></div>
             <div>
                 <p style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text-muted); letter-spacing:1px; margin:0;">Location</p>
                 <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${book.section} • Shelf ${book.shelf_number}</p>
@@ -265,6 +266,7 @@ function showBookDetail(book, myRequest) {
     }
     
     navigateTo('book-detail-view');
+    lucide.createIcons();
 }
 
 window.handleRequestAction = function (bookId) {
@@ -369,7 +371,7 @@ function renderMyBooksView() {
         card.className = 'book-card';
         card.innerHTML = `
             <div class="book-img-placeholder">
-                📚
+                <i data-lucide="book" style="width:40px; height:40px; color:var(--primary-light); opacity:0.5;"></i>
             </div>
             <div class="book-info">
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
@@ -377,11 +379,12 @@ function renderMyBooksView() {
                 </div>
                 <div style="margin-bottom:12px;">${statusHtml}</div>
                 <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:11px; font-weight:700;">
-                    <span>🕒</span> ${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}
+                    <i data-lucide="clock"></i> ${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}
                 </div>
             </div>
         `;
         
         listContainer.appendChild(card);
     });
+    lucide.createIcons();
 }

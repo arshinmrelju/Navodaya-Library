@@ -14,6 +14,10 @@
     
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
     <style>
         .admin-header {
             background: linear-gradient(135deg, #1e293b, #0f172a);
@@ -110,7 +114,7 @@
     <!-- Admin Login Screen -->
     <div id="admin-login-screen" class="login-container">
         <div class="login-box" style="padding: 40px; border-radius: 24px; box-shadow: var(--shadow-lg);">
-            <div style="font-size: 48px; margin-bottom: 16px;">🔑</div>
+            <div style="color:var(--primary-color); margin-bottom: 24px;"><i data-lucide="lock" style="width:48px; height:48px;"></i></div>
             <h2 style="color:var(--primary-color); margin-bottom:12px; font-weight: 800; letter-spacing: -1px; font-size: 28px;">Librarian Portal</h2>
             <p style="color:var(--text-secondary); margin-bottom: 32px; font-size: 15px;">Enter your admin password to manage inventory and requests.</p>
             
@@ -182,11 +186,11 @@
 
         <nav class="bottom-nav">
             <button class="nav-item active" data-target="requests-view">
-                <span class="nav-icon">📋</span>
+                <span class="nav-icon"><i data-lucide="clipboard-list"></i></span>
                 <span>Requests</span>
             </button>
             <button class="nav-item" data-target="inventory-view">
-                <span class="nav-icon">📚</span>
+                <span class="nav-icon"><i data-lucide="database"></i></span>
                 <span>Inventory</span>
             </button>
         </nav>
@@ -194,7 +198,10 @@
 
     <script type="module">
         import { initAdmin } from './js/admin.js';
-        document.addEventListener('DOMContentLoaded', initAdmin);
+        document.addEventListener('DOMContentLoaded', () => {
+            initAdmin();
+            lucide.createIcons();
+        });
     </script>
 </body>
 

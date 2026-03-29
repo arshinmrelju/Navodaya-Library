@@ -13,6 +13,9 @@
     <!-- Custom CSS -->
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="css/components.css">
+    
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
 
     <style>
         /* Modal Styles Refined */
@@ -95,9 +98,9 @@
 
     <!-- Top App Bar -->
     <header class="app-header" id="app-header">
-        <button class="header-action" onclick="navigateTo('welcome-view')" id="header-home-btn">🏠</button>
+        <button class="header-action" onclick="navigateTo('welcome-view')" id="header-home-btn"><i data-lucide="home"></i></button>
         <h1 class="app-title" id="header-title">Navodaya</h1>
-        <button class="header-action" onclick="navigateTo('library-view', 'focus-search')" id="header-search-btn">🔍</button>
+        <button class="header-action" onclick="navigateTo('library-view', 'focus-search')" id="header-search-btn"><i data-lucide="search"></i></button>
     </header>
 
     <!-- Main Content Area -->
@@ -106,18 +109,18 @@
         <!-- Welcome View -->
         <section id="welcome-view" class="view active-view">
             <div style="display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:75vh; padding:24px;">
-                <div class="hero-icon">🏛️</div>
+                <div class="hero-icon" style="color:var(--primary-color);"><i data-lucide="library" style="width:80px; height:80px;"></i></div>
                 <h2 class="welcome-title"><span>Welcome to</span>Navodaya Library</h2>
                 
                 <div style="width:100%; display:flex; flex-direction:column; gap:16px; max-width:400px;">
                     <button class="btn btn-primary w-100" style="padding:20px; font-size:18px;" onclick="navigateTo('library-view')">
-                        <span style="font-size:24px;">📚</span> Browse Books
+                        <i data-lucide="library"></i> Browse Books
                     </button>
                     <button class="btn glass w-100" style="padding:20px; font-size:18px; color:var(--primary-color); font-weight:700;" onclick="navigateTo('map-view')">
-                        <span style="font-size:24px;">🧭</span> Library Map
+                        <i data-lucide="map"></i> Library Map
                     </button>
                     <button class="btn w-100" style="padding:20px; font-size:18px; background:white; color:var(--text-secondary); border:1px solid var(--border-color);" onclick="navigateTo('my-books-view')">
-                        <span style="font-size:24px;">📥</span> My Requests
+                        <i data-lucide="inbox"></i> My Requests
                     </button>
                 </div>
                 
@@ -186,15 +189,15 @@
     <!-- Bottom Navigation -->
     <nav class="bottom-nav" id="bottom-nav">
         <button class="nav-item active" data-target="library-view">
-            <span class="nav-icon">📚</span>
+            <span class="nav-icon"><i data-lucide="library"></i></span>
             <span>Library</span>
         </button>
         <button class="nav-item" data-target="map-view">
-            <span class="nav-icon">🧭</span>
+            <span class="nav-icon"><i data-lucide="map"></i></span>
             <span>Map</span>
         </button>
         <button class="nav-item" data-target="my-books-view" id="nav-my-books">
-            <span class="nav-icon">📖</span>
+            <span class="nav-icon"><i data-lucide="book-open"></i></span>
             <span id="my-books-badge">My Books</span>
         </button>
     </nav>
@@ -223,7 +226,10 @@
     <!-- Scripts -->
     <script type="module">
         import { initApp } from './js/app.js';
-        document.addEventListener('DOMContentLoaded', initApp);
+        document.addEventListener('DOMContentLoaded', () => {
+            initApp();
+            lucide.createIcons();
+        });
     </script>
 </body>
 
