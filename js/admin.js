@@ -134,8 +134,8 @@ function renderRequests() {
                 </div>
             </div>
             <div class="req-actions" style="display:flex; gap:12px;">
-                <button class="btn btn-primary" style="flex:1; padding:12px;" id="approve-${req.id}">Approve</button>
-                <button class="btn" style="flex:1; padding:12px; background:var(--bg-color); color:var(--text-secondary);" id="reject-${req.id}">Reject</button>
+                <button class="btn btn-success" style="flex:1; padding:12px; font-weight:700;" id="approve-${req.id}">Approve</button>
+                <button class="btn btn-danger-soft" style="flex:1; padding:12px; font-weight:700;" id="reject-${req.id}">Reject</button>
             </div>
         `;
         list.appendChild(card);
@@ -168,8 +168,8 @@ function renderBorrows() {
                     <h3 class="book-title" style="font-size:14px;">${req.bookTitle}</h3>
                 </div>
             </div>
-            <div class="req-actions">
-                <button class="btn" style="background:#e0e0e0; color:black; padding: 8px 16px; font-size:14px; flex:1;" id="return-${req.id}">Mark Returned</button>
+            <div class="req-actions" style="display:flex; margin-top:12px;">
+                <button class="btn" style="background:var(--bg-color); color:var(--text-secondary); padding: 10px 18px; font-size:13px; font-weight:700; flex:1; border-radius:12px; border:1px solid var(--border-color); transition: all 0.2s;" id="return-${req.id}">Mark Returned</button>
             </div>
         `;
         list.appendChild(card);
@@ -275,10 +275,12 @@ window.saveBook = async function () {
         } else {
             await addDoc(collection(db, "books"), bookData);
         }
-        closeBookForm();
     } catch (e) {
-        console.error(e);
+        console.error("Firebase Error:", e);
+        alert("Warning: Could not save to Cloud. If your'e using placeholders in js/firebase-config.js, please update them with your real Firebase keys. For now, the form will close.");
     }
+    // Always close the form to prevent it from getting stuck
+    closeBookForm();
 };
 
 async function deleteBook(id) {
