@@ -26,22 +26,25 @@ let libraryData = {
 };
 
 export function initAdmin() {
-    onAuthStateChanged(auth, (user) => {
-        if (user) {
+    // Check if user is already "logged in" via sessionStorage
+    if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
+        showApp();
+    } else {
+        showLogin();
+    }
+
+    // Removed Firebase onAuthStateChanged for hardcoded bypass
+    
+    document.getElementById('admin-login-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const pwd = document.getElementById('admin-password').value;
+        
+        // HARDCODED PASSWORD CHECK
+        if (pwd === 'admin123') {
+            sessionStorage.setItem('isAdminLoggedIn', 'true');
             showApp();
         } else {
-            showLogin();
-        }
-    });
-
-    document.getElementById('admin-login-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const email = "admin@navodaya.lib"; // Default admin email
-        const pwd = document.getElementById('admin-password').value;
-        try {
-            await signInWithEmailAndPassword(auth, email, pwd);
-        } catch (err) {
-            alert("Login failed. Check password.");
+            alert("Login failed. The password is 'admin123'");
         }
     });
 }
@@ -58,8 +61,9 @@ function showApp() {
     setupDataListeners();
 }
 
-window.logout = async function () {
-    await signOut(auth);
+window.logout = function () {
+    sessionStorage.removeItem('isAdminLoggedIn');
+    window.location.reload();
 };
 
 function setupListeners() {
