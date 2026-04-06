@@ -1,4 +1,4 @@
-import { db, auth } from './firebase-config.js';
+import { db, auth, googleProvider } from './firebase-config.js';
 import { 
     collection, 
     addDoc, 
@@ -6,10 +6,16 @@ import {
     query, 
     where, 
     doc, 
+    getDoc,
     updateDoc, 
     getDocs, 
     serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { 
+    signInWithPopup, 
+    onAuthStateChanged,
+    signOut
+} from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 
 let currentUser = null;
 let currentView = 'welcome-view';
@@ -27,12 +33,33 @@ const headerTitle = document.getElementById('header-title');
 const navItems = document.querySelectorAll('.nav-item');
 
 export function initApp() {
-    const userStr = localStorage.getItem('nayodayam_user');
-    if (userStr) {
-        currentUser = JSON.parse(userStr);
-    }
+    // Monitor Auth State
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            currentUser = {
+                uid: user.uid,
+                name: user.displayName,
+                email: user.email,
+                photo: user.photoURL
+            };
+            // If they were in the middle of a request, process it
+            if (pendingRequestBookId) {
+                processRequestBook(pendingRequestBookId);
+                pendingRequestBookId = null;
+                closeAuthModal();
+            }
+        } else {
+            currentUser = null;
+        }
+        
+        setupFirestoreListeners();
+        
+        if (currentView === 'my-books-view') renderMyBooksView();
+        if (currentView === 'membership-view') renderMembershipView();
+        if (currentView === 'library-view') renderLibraryView();
+    });
+
     setupEventListeners();
-    setupFirestoreListeners();
     navigateTo('welcome-view');
 }
 
@@ -49,7 +76,8 @@ function setupFirestoreListeners() {
 
     // Listen for requests (user specific if logged in)
     if (currentUser) {
-        const q = query(collection(db, "requests"), where("userPhone", "==", currentUser.phone));
+        // Query by email and uid for redundancy/transition
+        const q = query(collection(db, "requests"), where("userEmail", "==", currentUser.email));
         onSnapshot(q, (snapshot) => {
             libraryData.requests = snapshot.docs.map(doc => ({
                 id: doc.id,
@@ -60,7 +88,7 @@ function setupFirestoreListeners() {
         });
 
         // Listen for membership (user specific)
-        const mq = query(collection(db, "members"), where("phone", "==", currentUser.phone));
+        const mq = query(collection(db, "members"), where("email", "==", currentUser.email));
         onSnapshot(mq, (snapshot) => {
             if (!snapshot.empty) {
                 libraryData.member = { id: snapshot.docs[0].id, ...snapshot.docs[0].data() };
@@ -69,6 +97,10 @@ function setupFirestoreListeners() {
             }
             if (currentView === 'membership-view') renderMembershipView();
         });
+    } else {
+        // Clear user data if logged out
+        libraryData.requests = [];
+        libraryData.member = null;
     }
 }
 
@@ -91,22 +123,13 @@ function setupEventListeners() {
         updateNavActive('library-view');
     });
 
-    document.getElementById('auth-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const name = document.getElementById('user-name').value;
-        const phone = document.getElementById('user-phone').value;
-        
-        currentUser = { name, phone };
-        localStorage.setItem('nayodayam_user', JSON.stringify(currentUser));
-        
-        closeAuthModal();
-        setupFirestoreListeners(); // Refresh listener for new user
-
-        if (pendingRequestBookId) {
-            processRequestBook(pendingRequestBookId);
-            pendingRequestBookId = null;
-        } else {
-            renderMyBooksView();
+    document.getElementById('google-signin-btn').addEventListener('click', async () => {
+        try {
+            await signInWithPopup(auth, googleProvider);
+            // closeAuthModal is handled by onAuthStateChanged
+        } catch (error) {
+            console.error("Login failed", error);
+            alert("Sign in failed. Please try again.");
         }
     });
 }
@@ -141,11 +164,14 @@ function navigateTo(viewId, action = null) {
     } else if (viewId === 'my-books-view') {
         headerTitle.textContent = 'My Requests';
         if (!currentUser) {
-            openAuthModal("Enter details to view your books");
             document.getElementById('borrowed-list').innerHTML = `
-                <div style="text-align: center; padding: 40px 20px;">
-                    <button class="btn btn-primary" onclick="openAuthModal('Enter details to view your books')">Identify Yourself</button>
-                    <p style="margin-top:16px; color:var(--text-secondary);">Enter your phone number to see your requests.</p>
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="background: var(--glass-bg); padding: 32px; border-radius: 24px; border: 1px solid var(--border-color);">
+                        <i data-lucide="user-plus" style="width: 48px; height: 48px; color: var(--primary-color); margin-bottom: 20px;"></i>
+                        <h3 style="margin-bottom: 8px;">Identify Yourself</h3>
+                        <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 14px;">Sign in with Google to view and manage your borrowed books.</p>
+                        <button class="btn btn-primary w-100" onclick="openAuthModal('Sign in to view your books')">Sign In Now</button>
+                    </div>
                 </div>
             `;
             document.getElementById('my-books-header').innerHTML = '';
@@ -194,7 +220,7 @@ function renderLibraryView(searchQuery = '') {
     let myRequests = [];
     if (currentUser) {
         myRequests = libraryData.requests.filter(r => 
-            r.userPhone === currentUser.phone && targetStatuses.includes(r.status)
+            r.userEmail === currentUser.email && targetStatuses.includes(r.status)
         );
     }
 
@@ -305,11 +331,14 @@ window.closeAuthModal = function () {
     document.getElementById('auth-modal').style.display = 'none';
 };
 
-window.logoutUser = function () {
-    localStorage.removeItem('nayodayam_user');
-    currentUser = null;
-    navigateTo('library-view');
-    window.location.reload();
+window.logoutUser = async function () {
+    try {
+        await signOut(auth);
+        navigateTo('library-view');
+        window.location.reload();
+    } catch (error) {
+        console.error("Logout failed", error);
+    }
 };
 
 // Export to window for inline onclick handlers
@@ -318,18 +347,20 @@ window.updateNavActive = updateNavActive;
 
 window.applyMembership = async function(e) {
     if (e) e.preventDefault();
+    
+    if (!currentUser) {
+        openAuthModal("Sign in to apply for membership");
+        return;
+    }
+
     const name = document.getElementById('mem-name').value;
     const phone = document.getElementById('mem-phone').value;
     const address = document.getElementById('mem-address').value;
 
-    if (!currentUser) {
-        currentUser = { name, phone };
-        localStorage.setItem('nayodayam_user', JSON.stringify(currentUser));
-        setupFirestoreListeners();
-    }
-
     try {
         await addDoc(collection(db, "members"), {
+            uid: currentUser.uid,
+            email: currentUser.email,
             name: name,
             phone: phone,
             address: address,
@@ -352,8 +383,7 @@ function renderMembershipView() {
     const container = document.getElementById('membership-content');
     if (!currentUser || !libraryData.member) {
         let defaultName = currentUser ? currentUser.name : '';
-        let defaultPhone = currentUser ? currentUser.phone : '';
-        let phoneStyle = currentUser ? 'readonly style="background:#f1f5f9; color:var(--text-muted);"' : 'pattern="[0-9]{10}" placeholder="10-digit number"';
+        let showLoginPrompt = !currentUser;
 
         container.innerHTML = `
             <div class="glass" style="padding: 24px; border-radius: var(--radius-lg);">
@@ -361,15 +391,17 @@ function renderMembershipView() {
                     <i data-lucide="user-plus" style="width:48px; height:48px; color:var(--primary-color);"></i>
                     <h3 style="margin-top:12px; color:var(--primary-color);">Apply for Membership</h3>
                     <p style="color:var(--text-secondary); font-size:14px;">Join the library to borrow books easily.</p>
+                    ${showLoginPrompt ? `<button class="btn btn-primary w-100" style="margin-top:20px; background: white; color: var(--text-primary); border: 1px solid var(--border-color);" onclick="openAuthModal('Sign in to apply')">Sign in with Google First</button>` : ''}
                 </div>
-                <form id="membership-form" onsubmit="applyMembership(event)">
+                
+                <form id="membership-form" onsubmit="applyMembership(event)" style="${showLoginPrompt ? 'opacity:0.3; pointer-events:none;' : ''}">
                     <div class="input-group">
                         <label>Full Name</label>
                         <input type="text" id="mem-name" value="${defaultName}" placeholder="Your Full Name" required>
                     </div>
                     <div class="input-group">
                         <label>Phone Number</label>
-                        <input type="tel" id="mem-phone" value="${defaultPhone}" required ${phoneStyle}>
+                        <input type="tel" id="mem-phone" required pattern="[0-9]{10}" placeholder="10-digit number">
                     </div>
                     <div class="input-group">
                         <label>Address</label>
@@ -445,7 +477,8 @@ async function processRequestBook(bookId) {
     if (book && book.available) {
         try {
             await addDoc(collection(db, "requests"), {
-                userPhone: currentUser.phone,
+                uid: currentUser.uid,
+                userEmail: currentUser.email,
                 userName: currentUser.name,
                 bookId: book.id,
                 bookTitle: book.title,
@@ -472,9 +505,12 @@ function renderMyBooksView() {
 
     document.getElementById('my-books-header').innerHTML = `
         <div class="glass" style="padding:16px; border-radius:var(--radius-md); margin-bottom:24px; display:flex; align-items:center; justify-content:space-between;">
-            <div>
-                <p style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text-muted); letter-spacing:1px; margin:0;">Verified User</p>
-                <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${currentUser.name}</p>
+            <div style="display:flex; align-items:center; gap:12px;">
+                ${currentUser.photo ? `<img src="${currentUser.photo}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--primary-color);">` : `<div style="width:40px; height:40px; border-radius:50%; background:var(--primary-color); color:white; display:flex; align-items:center; justify-content:center; font-weight:800;">${currentUser.name[0]}</div>`}
+                <div>
+                    <p style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text-muted); letter-spacing:1px; margin:0;">Welcome back</p>
+                    <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${currentUser.name}</p>
+                </div>
             </div>
             <button onclick="logoutUser()" class="btn" style="background:var(--danger-color); color:white; padding:8px 12px; font-size:12px; border-radius:8px;">Logout</button>
         </div>
