@@ -19,6 +19,11 @@
     <script src="https://unpkg.com/lucide@latest"></script>
     
     <style>
+        /* Override global main padding since #admin-app handles header offset */
+        #app-content {
+            padding-top: 0 !important;
+        }
+
         .login-container {
             padding-top: calc(64px + env(safe-area-inset-top));
         }
@@ -149,8 +154,8 @@
     </div>
 
     <!-- Admin dashboard container (hidden by default) -->
-    <div id="admin-app" style="display: none; height: 100vh; flex-direction: column;">
-        <main id="app-content" style="flex-grow:1; overflow-y:auto; padding-bottom:70px;">
+    <div id="admin-app" style="display: none; height: 100dvh; flex-direction: column; padding-top: calc(64px + env(safe-area-inset-top));">
+        <main id="app-content" style="flex-grow:1; overflow-y:auto; padding-bottom: calc(120px + env(safe-area-inset-bottom));">
             <!-- Dashboard/Requests View -->
             <section id="requests-view" class="view active-view">
                 <h2 class="view-title">Pending Requests</h2>
@@ -192,15 +197,14 @@
 
                 <div id="inventory-list" class="book-list"></div>
             </section>
+            <footer class="app-footer">
+                <span class="footer-logo">Nayodayam Library</span>
+                <p class="footer-copy">© 2026 Nayodayam. All rights reserved.</p>
+                <p class="footer-tagline">Empowering Rural Communities Through Books</p>
+                <p class="footer-copy" style="margin-top: 8px;">Amarakuni, Pulpally, Wayanad-673579, Kerala</p>
+                <p class="footer-tagline" style="margin-top: 12px; font-size: 9px; opacity: 0.8;">Developed by Dept. of English Interns<br>Pazhassiraja College</p>
+            </footer>
         </main>
-        
-        <footer class="app-footer">
-            <span class="footer-logo">Nayodayam Library</span>
-            <p class="footer-copy">© 2026 Nayodayam. All rights reserved.</p>
-            <p class="footer-tagline">Empowering Rural Communities Through Books</p>
-            <p class="footer-copy" style="margin-top: 8px;">Amarakuni, Pulpally, Wayanad-673579, Kerala</p>
-            <p class="footer-tagline" style="margin-top: 12px; font-size: 9px; opacity: 0.8;">Developed by Dept. of English Interns<br>Pazhassiraja College</p>
-        </footer>
 
         <nav class="bottom-nav">
             <button class="nav-item active" data-target="requests-view">
