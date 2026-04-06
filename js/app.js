@@ -26,7 +26,7 @@ const headerTitle = document.getElementById('header-title');
 const navItems = document.querySelectorAll('.nav-item');
 
 export function initApp() {
-    const userStr = localStorage.getItem('navodaya_user');
+    const userStr = localStorage.getItem('nayodayam_user');
     if (userStr) {
         currentUser = JSON.parse(userStr);
     }
@@ -85,7 +85,7 @@ function setupEventListeners() {
         const phone = document.getElementById('user-phone').value;
         
         currentUser = { name, phone };
-        localStorage.setItem('navodaya_user', JSON.stringify(currentUser));
+        localStorage.setItem('nayodayam_user', JSON.stringify(currentUser));
         
         closeAuthModal();
         setupFirestoreListeners(); // Refresh listener for new user
@@ -288,7 +288,7 @@ window.closeAuthModal = function () {
 };
 
 window.logoutUser = function () {
-    localStorage.removeItem('navodaya_user');
+    localStorage.removeItem('nayodayam_user');
     currentUser = null;
     navigateTo('library-view');
     window.location.reload();

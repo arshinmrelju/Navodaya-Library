@@ -1,7 +1,7 @@
 {
-  "name": "navodaya-library-web-app",
+  "name": "nayodayam-library-web-app",
   "version": "1.0.0",
-  "description": "Navodaya Library is a professional, mobile-first digital library assistant designed for rural communities. It provides an intuitive interface for users to browse books, locate them on physical shelves, and request titles seamlessly. The app is powered by **Firebase** for real-time data synchronization and secure administrative control.",
+  "description": "nayodayam Library is a professional, mobile-first digital library assistant designed for rural communities. It provides an intuitive interface for users to browse books, locate them on physical shelves, and request titles seamlessly. The app is powered by **Firebase** for real-time data synchronization and secure administrative control.",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

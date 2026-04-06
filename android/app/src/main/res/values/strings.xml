@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Navodaya Librarian</string>
-    <string name="title_activity_main">Navodaya Librarian</string>
-    <string name="package_name">com.navodaya.librarian</string>
-    <string name="custom_url_scheme">com.navodaya.librarian</string>
+    <string name="app_name">nayodayam Librarian</string>
+    <string name="title_activity_main">nayodayam Librarian</string>
+    <string name="package_name">com.nayodayam.librarian</string>
+    <string name="custom_url_scheme">com.nayodayam.librarian</string>
 </resources>

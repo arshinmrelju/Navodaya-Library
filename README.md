@@ -1,6 +1,6 @@
-# 🏛️ Navodaya Library Web App
+# 🏛️ nayodayam Library Web App
 
-Navodaya Library is a professional, mobile-first digital library assistant designed for rural communities. It provides an intuitive interface for users to browse books, locate them on physical shelves, and request titles seamlessly. The app is powered by **Firebase** for real-time data synchronization and secure administrative control.
+nayodayam Library is a professional, mobile-first digital library assistant designed for rural communities. It provides an intuitive interface for users to browse books, locate them on physical shelves, and request titles seamlessly. The app is powered by **Firebase** for real-time data synchronization and secure administrative control.
 
 ## ✨ Features
 

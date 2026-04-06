@@ -1,4 +1,4 @@
-package com.navodaya.librarian;
+package com.nayodayam.librarian;
 
 import com.getcapacitor.BridgeActivity;
 
