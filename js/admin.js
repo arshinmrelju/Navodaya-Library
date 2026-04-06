@@ -52,13 +52,16 @@ export function initAdmin() {
 function showLogin() {
     document.getElementById('admin-login-screen').style.display = 'flex';
     document.getElementById('admin-app').style.display = 'none';
+    document.getElementById('header-logout-btn').style.display = 'none';
 }
 
 function showApp() {
     document.getElementById('admin-login-screen').style.display = 'none';
     document.getElementById('admin-app').style.display = 'flex';
+    document.getElementById('header-logout-btn').style.display = 'flex';
     setupListeners();
     setupDataListeners();
+    lucide.createIcons();
 }
 
 window.logout = function () {
