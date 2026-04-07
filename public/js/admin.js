@@ -296,18 +296,26 @@ function renderInventory() {
     list.innerHTML = '';
 
     libraryData.books.forEach(book => {
+        const section = book.section || book.category || 'N/A';
+        const shelf = book.shelf_number || book.shelf || 'N/A';
+        
         const card = document.createElement('div');
         card.className = 'book-card';
         card.style.alignItems = 'center';
         card.innerHTML = `
-            <div class="book-img-placeholder" style="width:60px; height:80px;">
+            <div class="book-img-placeholder" style="width:60px; height:80px; position:relative;">
                 <i data-lucide="book" style="width:28px; height:28px;"></i>
+                <span style="position:absolute; bottom:4px; right:4px; font-size:9px; font-weight:800; color:var(--text-muted); opacity:0.5;">#${book.stock_number || '---'}</span>
             </div>
             <div class="book-info">
                 <h3 class="book-title" style="font-size:16px;">${book.title}</h3>
-                <p class="book-author" style="font-size:13px; margin-bottom:8px;">${book.author}</p>
-                <span class="status-badge ${book.available ? 'status-available' : 'status-borrowed'}">
-                    ${book.available ? 'Available' : 'Unavailable'}
+                <p class="book-author" style="font-size:13px; margin-bottom:4px;">${book.author}</p>
+                <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">
+                    <span style="background:var(--bg-color); padding:2px 6px; border-radius:4px;">${section}</span>
+                    <span style="background:var(--bg-color); padding:2px 6px; border-radius:4px;">Shelf ${shelf}</span>
+                </div>
+                <span class="status-badge ${book.available !== false ? 'status-available' : 'status-borrowed'}">
+                    ${book.available !== false ? 'Available' : 'Unavailable'}
                 </span>
             </div>
             <div style="display:flex; gap:8px;">

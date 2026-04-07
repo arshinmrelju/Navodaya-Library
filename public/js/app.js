@@ -1,18 +1,18 @@
 import { db, auth, googleProvider } from './firebase-config.js';
-import { 
-    collection, 
-    addDoc, 
-    onSnapshot, 
-    query, 
-    where, 
-    doc, 
+import {
+    collection,
+    addDoc,
+    onSnapshot,
+    query,
+    where,
+    doc,
     getDoc,
-    updateDoc, 
-    getDocs, 
-    serverTimestamp 
+    updateDoc,
+    getDocs,
+    serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
-import { 
-    signInWithPopup, 
+import {
+    signInWithPopup,
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -51,9 +51,9 @@ export function initApp() {
         } else {
             currentUser = null;
         }
-        
+
         setupFirestoreListeners();
-        
+
         if (currentView === 'my-books-view') renderMyBooksView();
         if (currentView === 'membership-view') renderMembershipView();
         if (currentView === 'library-view') renderLibraryView();
@@ -194,12 +194,12 @@ function updateNavActive(viewId) {
 function renderLibraryView(searchQuery = '') {
     const listContainer = document.getElementById('book-list');
     listContainer.innerHTML = '';
-    
+
     const booksToRender = libraryData.books.filter(book => {
-        const titleMatch = book.title.toLowerCase().includes(searchQuery);
-        const authorMatch = book.author.toLowerCase().includes(searchQuery);
-        const sectionMatch = book.section?.toLowerCase().includes(searchQuery);
-        const shelfMatch = book.shelf_number?.toLowerCase().includes(searchQuery);
+        const titleMatch = book.title?.toLowerCase().includes(searchQuery);
+        const authorMatch = book.author?.toLowerCase().includes(searchQuery);
+        const sectionMatch = (book.section || book.category)?.toLowerCase().includes(searchQuery);
+        const shelfMatch = (book.shelf_number || book.shelf)?.toLowerCase().includes(searchQuery);
         return titleMatch || authorMatch || sectionMatch || shelfMatch;
     });
 
@@ -219,14 +219,14 @@ function renderLibraryView(searchQuery = '') {
     const targetStatuses = ['pending', 'borrowed'];
     let myRequests = [];
     if (currentUser) {
-        myRequests = libraryData.requests.filter(r => 
+        myRequests = libraryData.requests.filter(r =>
             r.userEmail === currentUser.email && targetStatuses.includes(r.status)
         );
     }
 
     booksToRender.forEach(book => {
         const myRequest = myRequests.find(r => r.bookId === book.id);
-        
+
         let statusHtml = '';
         if (myRequest) {
             if (myRequest.status === 'pending') {
@@ -234,19 +234,22 @@ function renderLibraryView(searchQuery = '') {
             } else if (myRequest.status === 'borrowed') {
                 statusHtml = '<span class="status-badge status-borrowed">Borrowed</span>';
             }
-        } else if (book.available) {
+        } else if (book.available !== false) { // Default to true if not specified
             statusHtml = '<span class="status-badge status-available">Available</span>';
         } else {
             statusHtml = '<span class="status-badge status-borrowed">Unavailable</span>';
         }
 
-        const locationText = `${book.section || 'N/A'} • ${book.shelf_number || 'N/A'}`;
+        const section = book.section || book.category || 'N/A';
+        const shelf = book.shelf_number || book.shelf || 'N/A';
+        const locationText = `${section} • ${shelf}`;
 
         const card = document.createElement('div');
         card.className = 'book-card';
         card.innerHTML = `
-            <div class="book-img-placeholder">
+            <div class="book-img-placeholder" style="background: var(--bg-color); position: relative;">
                 <i data-lucide="book" style="width:40px; height:40px; color:var(--primary-light); opacity:0.5;"></i>
+                <span style="position: absolute; bottom: 8px; right: 8px; font-size: 10px; font-weight: 800; color: var(--text-muted); opacity: 0.5;">#${book.stock_number || '000'}</span>
             </div>
             <div class="book-info">
                 <h3 class="book-title">${book.title}</h3>
@@ -257,11 +260,11 @@ function renderLibraryView(searchQuery = '') {
                 ${statusHtml}
             </div>
         `;
-        
+
         card.addEventListener('click', () => {
             showBookDetail(book, myRequest);
         });
-        
+
         listContainer.appendChild(card);
     });
     lucide.createIcons();
@@ -269,7 +272,7 @@ function renderLibraryView(searchQuery = '') {
 
 function showBookDetail(book, myRequest) {
     const container = document.getElementById('book-detail-content');
-    
+
     let actionBtnHtml = '';
     if (myRequest) {
         if (myRequest.status === 'pending') {
@@ -277,28 +280,43 @@ function showBookDetail(book, myRequest) {
         } else if (myRequest.status === 'borrowed') {
             actionBtnHtml = `<button class="btn btn-primary w-100" style="background-color:#4caf50;" disabled>You Borrowed This</button>`;
         }
-    } else if (book.available) {
+    } else if (book.available !== false) {
         actionBtnHtml = `<button class="btn btn-primary w-100" id="req-btn-${book.id}">Request Book</button>`;
     } else {
         actionBtnHtml = `<button class="btn btn-primary w-100" style="background-color:#9e9e9e;" disabled>Unavailable</button>`;
     }
 
+    const section = book.section || book.category || 'N/A';
+    const shelf = book.shelf_number || book.shelf || 'N/A';
+
     container.innerHTML = `
-        <div class="detail-img-container">
+        <div class="detail-img-container" style="background: var(--glass-bg); border-radius: 24px; margin-bottom: 24px;">
             <i data-lucide="book-open" style="width:100px; height:100px; color:var(--primary-color);"></i>
+            <p style="margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--text-muted); opacity: 0.6;">Inventory ID: ${book.stock_number || book.id.substring(0, 6)}</p>
         </div>
         <h2 class="detail-title">${book.title}</h2>
         <p class="detail-author">${book.author}</p>
         
-        <div class="glass" style="padding:16px 20px; border-radius:var(--radius-md); margin-bottom:24px; display:flex; align-items:center; gap:12px;">
+        <div class="glass" style="padding:16px 20px; border-radius:var(--radius-md); margin-bottom: 24px; display:flex; align-items:center; gap:12px;">
             <div style="color:var(--primary-color);"><i data-lucide="map-pin"></i></div>
             <div>
                 <p style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text-muted); letter-spacing:1px; margin:0;">Location</p>
-                <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${book.section} • Shelf ${book.shelf_number}</p>
+                <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${section} • Shelf ${shelf}</p>
             </div>
         </div>
 
-        <p class="detail-desc">This copy is kept in the ${book.section} section. Use our digital map to locate the exact shelf.</p>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 24px;">
+            <div class="glass" style="padding: 12px; border-radius: 12px; text-align: center;">
+                <p style="font-size:10px; text-transform:uppercase; font-weight:800; color:var(--text-muted); margin:0;">Category</p>
+                <p style="font-size:14px; font-weight:700; color:var(--text-primary); margin:2px 0 0 0;">${section}</p>
+            </div>
+            <div class="glass" style="padding: 12px; border-radius: 12px; text-align: center;">
+                <p style="font-size:10px; text-transform:uppercase; font-weight:800; color:var(--text-muted); margin:0;">Language</p>
+                <p style="font-size:14px; font-weight:700; color:var(--text-primary); margin:2px 0 0 0;">${book.language || 'English'}</p>
+            </div>
+        </div>
+
+        <p class="detail-desc">This copy (${book.call_number || 'N/A'}) is kept in the ${section} section. Use our digital map to locate the exact shelf.</p>
         <div class="detail-actions">
             ${actionBtnHtml}
         </div>
@@ -308,7 +326,7 @@ function showBookDetail(book, myRequest) {
     if (btn) {
         btn.onclick = () => handleRequestAction(book.id);
     }
-    
+
     navigateTo('book-detail-view');
     lucide.createIcons();
 }
@@ -345,9 +363,9 @@ window.logoutUser = async function () {
 window.navigateTo = navigateTo;
 window.updateNavActive = updateNavActive;
 
-window.applyMembership = async function(e) {
+window.applyMembership = async function (e) {
     if (e) e.preventDefault();
-    
+
     if (!currentUser) {
         openAuthModal("Sign in to apply for membership");
         return;
@@ -368,7 +386,7 @@ window.applyMembership = async function(e) {
             timestamp: serverTimestamp()
         });
         alert('Application submitted successfully!');
-        
+
         if (!libraryData.member) {
             libraryData.member = { status: 'pending' };
             renderMembershipView();
@@ -489,7 +507,7 @@ async function processRequestBook(bookId) {
             // Mark book as unavailable (optional, usually admin does this upon approval, 
             // but for self-service simplicity we can do it here or let admin manage availability)
             // For now, per requirements, we store request with status: Pending.
-            
+
             alert(`You requested "${book.title}".`);
             navigateTo('my-books-view');
         } catch (e) {
@@ -528,11 +546,11 @@ function renderMyBooksView() {
 
     libraryData.requests.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)).forEach(req => {
         const book = libraryData.books.find(b => b.id === req.bookId);
-        
+
         let statusHtml = '';
         let color = '#e65100';
         let bg = '#fff3e0';
-        
+
         if (req.status === 'borrowed') {
             statusHtml = 'Borrowed';
             color = '#2e7d32';
@@ -561,7 +579,7 @@ function renderMyBooksView() {
                 </div>
             </div>
         `;
-        
+
         listContainer.appendChild(card);
     });
     lucide.createIcons();
