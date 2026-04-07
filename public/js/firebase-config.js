@@ -3,21 +3,24 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
 import { getFirestore } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import { getAuth, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-analytics.js";
 
-// TODO: Replace the following with your app's Firebase project configuration
+// Your app's Firebase project configuration
 const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-    appId: "YOUR_APP_ID"
+    apiKey: "AIzaSyDHVoMliBWV_zikCnievv7T1igbtQRXD2s",
+    authDomain: "navodaymlibrary.firebaseapp.com",
+    projectId: "navodaymlibrary",
+    storageBucket: "navodaymlibrary.firebasestorage.app",
+    messagingSenderId: "1015676164901",
+    appId: "1:1015676164901:web:9c24f1812443d882da18cc",
+    measurementId: "G-92C8DYG7H7"
 };
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 const auth = getAuth(app);
+const analytics = getAnalytics(app);
 const googleProvider = new GoogleAuthProvider();
 
-export { db, auth, googleProvider };
+export { db, auth, analytics, googleProvider };

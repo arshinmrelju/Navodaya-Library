@@ -1,6 +1,6 @@
 {
   "appId": "com.nayodayam.librarian",
   "appName": "Nayodayam Librarian",
-  "webDir": "dist-librarian",
+  "webDir": "public",
   "bundledWebRuntime": false
 }
