@@ -22,6 +22,18 @@ let adminCategoryFilter = 'All';
 const views = document.querySelectorAll('.view');
 const navItems = document.querySelectorAll('.nav-item');
 
+const LANGUAGE_MAP = {
+    '1': 'Malayalam',
+    '2': 'English',
+    '3': 'Hindi'
+};
+
+function getLanguageName(lang) {
+    if (!lang) return 'English';
+    const langStr = String(lang);
+    return LANGUAGE_MAP[langStr] || langStr;
+}
+
 let libraryData = {
     books: [],
     requests: [],
@@ -236,7 +248,7 @@ function renderMembers() {
                     <span>${m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleDateString() : 'New'}</span>
                 </div>
                 <div class="req-info" style="margin-bottom:20px;">
-                    <div class="book-img-placeholder" style="width:50px; height:50px; border-radius:50%;"><i data-lucide="user" style="width:24px; height:24px;"></i></div>
+                    ${m.photoURL ? `<img src="${m.photoURL}" style="width:50px; height:50px; border-radius:50%; object-fit:cover;">` : `<div class="book-img-placeholder" style="width:50px; height:50px; border-radius:50%;"><i data-lucide="user" style="width:24px; height:24px;"></i></div>`}
                     <div class="book-info">
                         <p style="font-size:14px; margin:0;">Phone: ${m.phone}</p>
                         <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">Address: ${m.address}</p>
@@ -248,6 +260,7 @@ function renderMembers() {
                 </div>
             `;
             pendingList.appendChild(card);
+            card.onclick = () => showMemberDetail(m.id);
         });
     }
 
@@ -257,13 +270,14 @@ function renderMembers() {
         approved.forEach(m => {
             const card = document.createElement('div');
             card.className = 'book-card req-card';
+            card.style.cursor = 'pointer';
             card.innerHTML = `
                 <div class="req-header">
                     <span class="req-user">${m.name}</span>
                     <span style="color:var(--success-color);">Active</span>
                 </div>
                 <div class="req-info">
-                    <div class="book-img-placeholder" style="width:50px; height:50px; border-radius:50%;"><i data-lucide="id-card" style="width:24px; height:24px;"></i></div>
+                    ${m.photoURL ? `<img src="${m.photoURL}" style="width:50px; height:50px; border-radius:50%; object-fit:cover;">` : `<div class="book-img-placeholder" style="width:50px; height:50px; border-radius:50%;"><i data-lucide="id-card" style="width:24px; height:24px;"></i></div>`}
                     <div class="book-info">
                         <p style="font-size:14px; margin:0; font-weight:bold;">ID: ${m.memberId}</p>
                         <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">Phone: ${m.phone}</p>
@@ -271,10 +285,190 @@ function renderMembers() {
                 </div>
             `;
             approvedList.appendChild(card);
+            card.onclick = () => showMemberDetail(m.id);
         });
     }
     lucide.createIcons();
 }
+
+window.showMemberDetail = function(memberId) {
+    const m = libraryData.members.find(mem => mem.id === memberId);
+    if (!m) return;
+
+    const modal = document.getElementById('member-detail-modal');
+    const content = document.getElementById('member-detail-content');
+
+    const statusBadge = m.status === 'approved' 
+        ? '<span style="background:#ecfdf5; color:#059669; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase;">Active Member</span>'
+        : '<span style="background:#fff7ed; color:#9a3412; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase;">Pending Approval</span>';
+
+    const memberRequests = libraryData.requests ? libraryData.requests.filter(req => req.userEmail === m.email || req.userId === m.uid) : [];
+    memberRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+    let historyHtml = '<div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;"><h3 style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px;"><i data-lucide="history" style="width:18px; height:18px; margin-right:8px; vertical-align:middle; display:inline-block;"></i>Borrowing History</h3>';
+    if (memberRequests.length === 0) {
+        historyHtml += '<p style="color: var(--text-secondary); font-size: 14px; text-align: center; padding: 24px; background: #f8fafc; border-radius: 12px;">No borrowing history found.</p>';
+    } else {
+        memberRequests.forEach(req => {
+            const reqDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
+            
+            let statusColor = '#94a3b8';
+            let statusBg = '#f1f5f9';
+            let statusText = req.status;
+            if (req.status === 'borrowed') { statusColor = '#d97706'; statusBg = '#fef3c7'; statusText = 'Borrowing'; }
+            if (req.status === 'returned') { statusColor = '#059669'; statusBg = '#dcfce7'; statusText = 'Returned'; }
+            if (req.status === 'pending') { statusColor = '#2563eb'; statusBg = '#dbeafe'; statusText = 'Pending'; }
+            if (req.status === 'rejected') { statusColor = '#dc2626'; statusBg = '#fee2e2'; statusText = 'Rejected'; }
+
+            historyHtml += `
+                <div style="padding: 16px; border: 1px solid var(--border-color); border-radius: 12px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; background: white;">
+                    <div style="flex: 1; min-width: 0;">
+                        <p style="margin: 0; font-weight: 700; font-size: 14px; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${req.bookTitle}</p>
+                        <p style="margin: 4px 0 0 0; font-size: 12px; color: var(--text-secondary);"><i data-lucide="calendar" style="width:12px; height:12px; display:inline-block; vertical-align:middle; margin-right:4px;"></i>${reqDate}</p>
+                    </div>
+                    <div style="margin-left: 12px; flex-shrink: 0;">
+                        <span style="font-size: 11px; font-weight: 700; color: ${statusColor}; background: ${statusBg}; padding: 4px 10px; border-radius: 12px; text-transform: uppercase;">${statusText}</span>
+                    </div>
+                </div>
+            `;
+        });
+    }
+    historyHtml += '</div>';
+
+    content.innerHTML = `
+        <div style="text-align: center; margin-bottom: 24px;">
+            ${m.photoURL ? `<img src="${m.photoURL}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover; margin: 0 auto 16px; border: 3px solid var(--primary-light);">` : `<div style="width: 80px; height: 80px; background: var(--bg-color); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--primary-color);">
+                <svg class="lucide" style="width: 40px; height: 40px;"><use href="#icon-users"/></svg>
+            </div>`}
+            <h2 style="font-size: 24px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;">${m.name}</h2>
+            ${statusBadge}
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 20px; padding-bottom: 40px;">
+            ${m.memberId ? `
+            <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><svg class="lucide" style="width:24px; height:24px;"><use href="#icon-lock"/></svg></div>
+                <div>
+                    <p style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Member ID</p>
+                    <p style="font-size: 16px; font-weight: 700; color: var(--text-primary);">${m.memberId}</p>
+                </div>
+            </div>` : ''}
+
+            <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><svg class="lucide" style="width:24px; height:24px;"><use href="#icon-phone"/></svg></div>
+                <div>
+                    <p style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Phone Number</p>
+                    <p style="font-size: 16px; font-weight: 700; color: var(--text-primary);">${m.phone}</p>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><svg class="lucide" style="width:24px; height:24px;"><use href="#icon-mail"/></svg></div>
+                <div>
+                    <p style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Email Address</p>
+                    <p style="font-size: 16px; font-weight: 700; color: var(--text-primary); text-break: break-all;">${m.email || 'N/A'}</p>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><svg class="lucide" style="width:24px; height:24px;"><use href="#icon-map-pin"/></svg></div>
+                <div>
+                    <p style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Residential Address</p>
+                    <p style="font-size: 15px; font-weight: 500; color: var(--text-primary); line-height: 1.4;">${m.address}</p>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><svg class="lucide" style="width:24px; height:24px;"><use href="#icon-calendar"/></svg></div>
+                <div>
+                    <p style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Application Date</p>
+                    <p style="font-size: 15px; font-weight: 500; color: var(--text-primary);">${m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleString() : 'N/A'}</p>
+                </div>
+            </div>
+        </div>
+
+        ${historyHtml}
+
+        ${m.status === 'approved' ? `
+        <div style="margin-top: 32px;">
+            <button class="btn btn-primary w-100" style="padding: 16px; background: #083344;" onclick="printMemberCard('${m.id}')">
+                <svg class="lucide" style="width:20px; height:20px; margin-right:8px;"><use href="#icon-calendar"/></svg>
+                Print Library Card (PDF)
+            </button>
+        </div>` : ''}
+
+        ${m.status === 'pending' ? `
+        <div style="display: flex; gap: 12px; margin-top: 32px;">
+            <button class="btn btn-success" style="flex: 1; padding: 16px;" onclick="handleApproveFromDetail('${m.id}')">Approve Member</button>
+            <button class="btn btn-danger-soft" style="flex: 1; padding: 16px;" onclick="handleRejectFromDetail('${m.id}')">Reject</button>
+        </div>` : ''}
+    `;
+
+    modal.style.display = 'flex';
+    lucide.createIcons();
+};
+
+window.printMemberCard = function(memberId) {
+    const m = libraryData.members.find(mem => mem.id === memberId);
+    if (!m) return;
+
+    const printArea = document.getElementById('printable-card-area');
+    printArea.innerHTML = `
+        <div class="print-card">
+            <div class="print-card-header">
+                <div>
+                    <h2>Nayodayam Library</h2>
+                    <p>Membership Card</p>
+                </div>
+                <div style="color: #083344; font-weight: 800; font-size: 14px;">NYD</div>
+            </div>
+            
+            <div style="margin-top: 12px;">
+                <p style="font-size: 10px; opacity: 0.7; text-transform: uppercase;">Member Name</p>
+                <p style="font-size: 18px; font-weight: 800; margin: 0; color: #0f172a;">${m.name}</p>
+            </div>
+
+            <div class="print-barcode-container">
+                <svg id="print-barcode"></svg>
+            </div>
+
+            <div class="print-card-footer">
+                <div>ID: ${m.memberId}</div>
+                <div>SINCE ${m.timestamp ? new Date(m.timestamp.seconds * 1000).getFullYear() : new Date().getFullYear()}</div>
+            </div>
+        </div>
+    `;
+
+    // Generate barcode
+    setTimeout(() => {
+        if (window.JsBarcode && m.memberId) {
+            JsBarcode("#print-barcode", m.memberId, {
+                format: "CODE128",
+                width: 2,
+                height: 40,
+                displayValue: false,
+                margin: 0
+            });
+            window.print();
+        }
+    }, 100);
+};
+
+window.closeMemberDetail = function() {
+    document.getElementById('member-detail-modal').style.display = 'none';
+};
+
+window.handleApproveFromDetail = async function(id) {
+    await approveMember(id);
+    closeMemberDetail();
+};
+
+window.handleRejectFromDetail = async function(id) {
+    if (confirm("Reject this application?")) {
+        await rejectMember(id); // rejectMember already has a confirm, but we'll stick to it
+        closeMemberDetail();
+    }
+};
 
 window.approveMember = async function(id) {
     const randDigits = Math.floor(1000 + Math.random() * 9000);
@@ -346,6 +540,7 @@ function renderInventory() {
                 <div style="font-size:11px; color:var(--text-muted); margin-bottom:8px;">
                     <span style="background:var(--bg-color); padding:2px 6px; border-radius:4px;">${category}</span>
                     <span style="background:var(--bg-color); padding:2px 6px; border-radius:4px;">Shelf ${shelf}</span>
+                    <span style="background:var(--bg-color); padding:2px 6px; border-radius:4px;">${getLanguageName(book.language)}</span>
                 </div>
                 <span class="status-badge ${book.available !== false ? 'status-available' : 'status-borrowed'}">
                     ${book.available !== false ? 'Available' : 'Unavailable'}
@@ -369,6 +564,7 @@ window.openBookForm = function (bookId = null) {
     const idField = document.getElementById('edit-book-id');
     const titleField = document.getElementById('new-title');
     const authorField = document.getElementById('new-author');
+    const langField = document.getElementById('new-language');
     const shelfField = document.getElementById('new-shelf');
     const rowField = document.getElementById('new-row');
     const checkboxes = document.querySelectorAll('input[name="category"]');
@@ -383,6 +579,7 @@ window.openBookForm = function (bookId = null) {
             idField.value = book.id;
             titleField.value = book.title;
             authorField.value = book.author;
+            langField.value = book.language || '2';
             shelfField.value = book.shelf_number || '';
             rowField.value = book.row || '';
             
@@ -397,6 +594,7 @@ window.openBookForm = function (bookId = null) {
         idField.value = '';
         titleField.value = '';
         authorField.value = '';
+        langField.value = '2'; // Default English
         shelfField.value = '';
         rowField.value = '';
     }
@@ -417,6 +615,7 @@ window.saveBook = async function () {
     const bookData = {
         title: document.getElementById('new-title').value.trim(),
         author: document.getElementById('new-author').value.trim(),
+        language: document.getElementById('new-language').value,
         category: selectedCats.length > 0 ? selectedCats[0] : 'Other', // Using first one for primary category
         categories: selectedCats, // Store all for future use
         shelf_number: document.getElementById('new-shelf').value.trim(),
@@ -446,3 +645,76 @@ async function deleteBook(id) {
         await deleteDoc(doc(db, "books", id));
     }
 }
+
+window.printMemberList = function() {
+    const list = libraryData.members.filter(m => m.status === 'approved');
+    if (list.length === 0) {
+        alert("No approved members to print.");
+        return;
+    }
+
+    // Sort alphabetically by name
+    list.sort((a, b) => a.name.localeCompare(b.name));
+
+    const printArea = document.getElementById('printable-card-area');
+    
+    let rowsHtml = '';
+    list.forEach((m, index) => {
+        const dateStr = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
+        const bg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+        rowsHtml += `
+            <tr style="background-color: ${bg}; border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 14px 16px; text-align: center; color: #64748b; font-weight: 600;">${index + 1}</td>
+                <td style="padding: 14px 16px; font-weight: 700; color: #0f172a; font-size: 14px;">${m.name}</td>
+                <td style="padding: 14px 16px; font-family: 'Inter', monospace; color: #0fa3b1; font-weight: 700;">${m.memberId || 'N/A'}</td>
+                <td style="padding: 14px 16px; color: #475569;">${m.phone || 'N/A'}</td>
+                <td style="padding: 14px 16px; color: #475569;">${dateStr}</td>
+            </tr>
+        `;
+    });
+
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    printArea.innerHTML = `
+        <div class="print-list" style="width: 100%; max-width: 850px; margin: 0 auto; font-family: 'Inter', sans-serif; padding: 30px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
+                <h1 style="color: #083344; font-size: 32px; font-weight: 800; margin: 0; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; gap: 12px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #0fa3b1;"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg>
+                    Nayodayam Library
+                </h1>
+                <h2 style="color: #64748b; font-size: 14px; margin: 8px 0 0 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">Membership Directory</h2>
+                <div style="display: flex; justify-content: center; gap: 12px; margin-top: 16px;">
+                    <span style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; color: #475569; font-size: 12px; font-weight: 600;">Date: ${currentDate}</span>
+                    <span style="background: #e0f2fe; padding: 6px 14px; border-radius: 20px; color: #0284c7; font-size: 12px; font-weight: 600;">Total Active: ${list.length}</span>
+                </div>
+            </div>
+            
+            <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background-color: #083344; color: white;">
+                            <th style="padding: 16px; text-align: center; width: 40px; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">#</th>
+                            <th style="padding: 16px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Full Name</th>
+                            <th style="padding: 16px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Member ID</th>
+                            <th style="padding: 16px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Phone</th>
+                            <th style="padding: 16px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Joined Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 50px; font-size: 11px; color: #94a3b8; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <p style="margin: 0;">Official Record - Nayodayam Library - Amarakuni, Pulpally, Wayanad-673579, Kerala</p>
+                <p style="margin: 0; opacity: 0.7;">Developed by Dept. of English Interns, Pazhassiraja College</p>
+            </div>
+        </div>
+    `;
+
+    setTimeout(() => {
+        window.print();
+    }, 100);
+};

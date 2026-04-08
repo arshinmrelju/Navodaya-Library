@@ -24,6 +24,18 @@ let currentUser = null;
 let currentView = 'welcome-view';
 let pendingRequestBookId = null;
 
+const LANGUAGE_MAP = {
+    '1': 'Malayalam',
+    '2': 'English',
+    '3': 'Hindi'
+};
+
+function getLanguageName(lang) {
+    if (!lang) return 'English';
+    const langStr = String(lang);
+    return LANGUAGE_MAP[langStr] || langStr;
+}
+
 let libraryData = {
     books: [],
     requests: [],
@@ -379,7 +391,7 @@ function showBookDetail(book, myRequest) {
             </div>
             <div class="glass" style="padding: 12px; border-radius: 12px; text-align: center;">
                 <p style="font-size:10px; text-transform:uppercase; font-weight:800; color:var(--text-muted); margin:0;">Language</p>
-                <p style="font-size:14px; font-weight:700; color:var(--text-primary); margin:2px 0 0 0;">${book.language || 'English'}</p>
+                <p style="font-size:14px; font-weight:700; color:var(--text-primary); margin:2px 0 0 0;">${getLanguageName(book.language)}</p>
             </div>
         </div>
 
@@ -522,6 +534,7 @@ window.applyMembership = async function (e) {
         await addDoc(collection(db, "members"), {
             uid: currentUser.uid,
             email: currentUser.email,
+            photoURL: currentUser.photoURL || null,
             name: name,
             phone: phone,
             address: address,
@@ -597,9 +610,12 @@ function renderMembershipView() {
                     <i data-lucide="library" style="width:36px; height:36px; opacity:0.9;"></i>
                 </div>
                 
-                <div style="margin-bottom:28px; position:relative; z-index:1;">
-                    <p style="font-size:11px; opacity:0.7; margin:0; text-transform:uppercase; letter-spacing:1px;">Member Name</p>
-                    <p style="font-size:24px; font-weight:700; margin:0; letter-spacing:-0.5px;">${m.name}</p>
+                <div style="margin-bottom:28px; position:relative; z-index:1; display:flex; align-items:center; gap: 16px;">
+                    ${m.photoURL ? `<img src="${m.photoURL}" style="width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); object-fit: cover;">` : `<div style="width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;"><i data-lucide="user" style="width: 28px; height: 28px; color: white; opacity: 0.8;"></i></div>`}
+                    <div>
+                        <p style="font-size:11px; opacity:0.7; margin:0; text-transform:uppercase; letter-spacing:1px;">Member Name</p>
+                        <p style="font-size:24px; font-weight:700; margin:0; letter-spacing:-0.5px;">${m.name}</p>
+                    </div>
                 </div>
                 
                 <div style="background:white; padding: 16px; border-radius: 12px; text-align:center; position:relative; z-index:1;">
@@ -611,6 +627,10 @@ function renderMembershipView() {
                     <span style="background:rgba(255,255,255,0.1); padding:4px 8px; border-radius:12px;">Valid Lifetime</span>
                 </div>
             </div>
+            
+            <button class="btn btn-primary w-100" style="margin-top: 24px; background: white; color: var(--primary-color); border: 2px solid var(--primary-light); box-shadow: var(--shadow-sm);" onclick="printMyCard()">
+                <i data-lucide="printer"></i> Download / Print ID Card
+            </button>
             
             <div style="margin-top:24px; text-align:center; padding:16px; border:1px solid var(--border-color); border-radius:12px; background:white;">
                 <p style="color:var(--text-secondary); font-size:14px; margin-bottom:8px;"><i data-lucide="info" style="width:16px; height:16px; display:inline-block; vertical-align:middle; margin-right:4px;"></i> Show this card at the checkout counter.</p>
@@ -632,6 +652,52 @@ function renderMembershipView() {
     }
     lucide.createIcons();
 }
+
+window.printMyCard = function() {
+    const m = libraryData.member;
+    if (!m || m.status !== 'approved') return;
+
+    const printArea = document.getElementById('printable-card-area');
+    printArea.innerHTML = `
+        <div class="print-card">
+            <div class="print-card-header">
+                <div>
+                    <h2>Nayodayam Library</h2>
+                    <p>Membership Card</p>
+                </div>
+                <div style="color: #083344; font-weight: 800; font-size: 14px;">NYD</div>
+            </div>
+            
+            <div style="margin-top: 12px;">
+                <p style="font-size: 10px; opacity: 0.7; text-transform: uppercase;">Member Name</p>
+                <p style="font-size: 18px; font-weight: 800; margin: 0; color: #0f172a;">${m.name}</p>
+            </div>
+
+            <div class="print-barcode-container">
+                <svg id="print-barcode-member"></svg>
+            </div>
+
+            <div class="print-card-footer">
+                <div>ID: ${m.memberId}</div>
+                <div>SINCE ${m.timestamp ? new Date(m.timestamp.seconds * 1000).getFullYear() : new Date().getFullYear()}</div>
+            </div>
+        </div>
+    `;
+
+    // Generate barcode
+    setTimeout(() => {
+        if (window.JsBarcode && m.memberId) {
+            JsBarcode("#print-barcode-member", m.memberId, {
+                format: "CODE128",
+                width: 2,
+                height: 40,
+                displayValue: false,
+                margin: 0
+            });
+            window.print();
+        }
+    }, 100);
+};
 
 async function processRequestBook(bookId) {
     const book = libraryData.books.find(b => b.id === bookId);
