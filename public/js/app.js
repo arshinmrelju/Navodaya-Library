@@ -636,7 +636,7 @@ function renderMembershipView() {
                 </div>
                 
                 <div style="margin-bottom:28px; position:relative; z-index:1; display:flex; align-items:center; gap: 16px;">
-                    ${m.photoURL ? `<img src="${m.photoURL}" style="width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); object-fit: cover;">` : `<div style="width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center;"><i data-lucide="user" style="width: 28px; height: 28px; color: white; opacity: 0.8;"></i></div>`}
+                    ${m.photoURL ? `<img src="${m.photoURL}" style="width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); object-fit: cover; flex-shrink: 0;">` : `<div style="width: 56px; height: 56px; border-radius: 50%; border: 2px solid rgba(255,255,255,0.5); background: rgba(255,255,255,0.1); display: flex; align-items: center; justify-content: center; flex-shrink: 0;"><i data-lucide="user" style="width: 28px; height: 28px; color: white; opacity: 0.8;"></i></div>`}
                     <div>
                         <p style="font-size:11px; opacity:0.7; margin:0; text-transform:uppercase; letter-spacing:1px;">Member Name</p>
                         <p style="font-size:24px; font-weight:700; margin:0; letter-spacing:-0.5px;">${m.name}</p>
@@ -759,7 +759,7 @@ function renderMyBooksView() {
     document.getElementById('my-books-header').innerHTML = `
         <div class="glass" style="padding:16px; border-radius:var(--radius-md); margin-bottom:24px; display:flex; align-items:center; justify-content:space-between;">
             <div style="display:flex; align-items:center; gap:12px;">
-                ${currentUser.photo ? `<img src="${currentUser.photo}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--primary-color);">` : `<div style="width:40px; height:40px; border-radius:50%; background:var(--primary-color); color:white; display:flex; align-items:center; justify-content:center; font-weight:800;">${currentUser.name[0]}</div>`}
+                ${currentUser.photo ? `<img src="${currentUser.photo}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--primary-color); flex-shrink: 0; object-fit: cover;">` : `<div style="width:40px; height:40px; border-radius:50%; background:var(--primary-color); color:white; display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink: 0;">${currentUser.name[0]}</div>`}
                 <div>
                     <p style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text-muted); letter-spacing:1px; margin:0;">Welcome back</p>
                     <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${currentUser.name}</p>
