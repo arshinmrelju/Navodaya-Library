@@ -181,12 +181,18 @@ function renderRequests() {
                     <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">ID: ${req.userPhone || 'N/A'}</p>
                 </div>
             </div>
-            <div class="req-actions" style="display:flex; gap:12px;">
-                <button class="btn btn-success" style="flex:1; padding:12px; font-weight:700;" id="approve-${req.id}">Approve</button>
-                <button class="btn btn-danger-soft" style="flex:1; padding:12px; font-weight:700;" id="reject-${req.id}">Reject</button>
+            <div class="req-actions" style="display:flex; flex-direction:column; gap:12px;">
+                <button class="btn btn-primary" style="padding:14px; font-weight:700; width:100%; display:flex; align-items:center; justify-content:center; gap:8px;" id="scan-${req.id}">
+                    <i data-lucide="scan-line" style="width:18px; height:18px;"></i> Scan to Approve
+                </button>
+                <div style="display:flex; gap:12px;">
+                    <button class="btn btn-success" style="flex:1; padding:10px; font-size:12px; font-weight:600;" id="approve-${req.id}">Manual Approve</button>
+                    <button class="btn btn-danger-soft" style="flex:1; padding:10px; font-size:12px; font-weight:600;" id="reject-${req.id}">Reject</button>
+                </div>
             </div>
         `;
         list.appendChild(card);
+        card.querySelector(`#scan-${req.id}`).onclick = () => openScanner(req.id, req.memberId, req.bookId);
         card.querySelector(`#approve-${req.id}`).onclick = () => updateRequestStatus(req.id, 'borrowed', req.bookId);
         card.querySelector(`#reject-${req.id}`).onclick = () => updateRequestStatus(req.id, 'rejected', req.bookId);
     });
@@ -728,4 +734,77 @@ window.printMemberList = function() {
     setTimeout(() => {
         window.print();
     }, 100);
+};
+
+// --- Barcode Scanner Logic ---
+let html5QrCode = null;
+let currentScanContext = null;
+
+window.openScanner = function(requestId, expectedMemberId, bookId) {
+    currentScanContext = { requestId, expectedMemberId, bookId };
+    const modal = document.getElementById('scanner-modal');
+    modal.style.display = 'flex';
+    
+    document.getElementById('scanner-msg').textContent = `Please scan the Membership Card of the user. Expected ID: ${expectedMemberId || 'Unknown'}`;
+    document.getElementById('force-approve-btn').style.display = 'none';
+
+    if (!html5QrCode) {
+        html5QrCode = new Html5Qrcode("reader");
+    }
+
+    const config = { fps: 10, qrbox: { width: 250, height: 150 } };
+
+    html5QrCode.start(
+        { facingMode: "environment" }, 
+        config,
+        (decodedText) => onScanSuccess(decodedText)
+    ).catch(err => {
+        console.error("Scanner error:", err);
+        document.getElementById('scanner-msg').innerHTML = `<span style="color:var(--danger-color);">Camera failed: ${err.message}</span>`;
+        document.getElementById('force-approve-btn').style.display = 'block'; // Show fallback
+    });
+};
+
+window.closeScanner = function() {
+    const modal = document.getElementById('scanner-modal');
+    modal.style.display = 'none';
+    if (html5QrCode && html5QrCode.isScanning) {
+        html5QrCode.stop().catch(err => console.error("Error stopping scanner:", err));
+    }
+    currentScanContext = null;
+};
+
+async function onScanSuccess(decodedText) {
+    if (!currentScanContext) return;
+    
+    const { requestId, expectedMemberId, bookId } = currentScanContext;
+    
+    // Normalize comparison (trim whitespace, etc)
+    const scannedId = decodedText.trim();
+    
+    if (scannedId === expectedMemberId) {
+        // Success match
+        await html5QrCode.stop();
+        showAlertModal(`ID Verified successfully (${scannedId}). Loan approved!`, "Success");
+        updateRequestStatus(requestId, 'borrowed', bookId);
+        closeScanner();
+    } else {
+        // Mismatch
+        document.getElementById('scanner-msg').innerHTML = `
+            <span style="color:var(--danger-color); font-weight:800;">ID MISMATCH!</span><br>
+            Scanned: <strong>${scannedId}</strong><br>
+            Expected: <strong>${expectedMemberId}</strong><br>
+            <span style="font-size:12px;">Please scan the correct member card.</span>
+        `;
+        document.getElementById('force-approve-btn').style.display = 'block';
+    }
+}
+
+window.forceApprove = async function() {
+    if (confirm("Are you sure you want to approve this loan WITHOUT a successful ID scan?")) {
+        const { requestId, bookId } = currentScanContext;
+        updateRequestStatus(requestId, 'borrowed', bookId);
+        showAlertModal("Loan forced approved by admin.", "Notice");
+        closeScanner();
+    }
 };

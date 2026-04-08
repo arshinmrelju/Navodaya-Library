@@ -16,6 +16,7 @@
     <!-- Lucide Icons (Versioned for faster loading & caching) -->
     <script src="https://unpkg.com/lucide@0.363.0"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.5/dist/JsBarcode.all.min.js"></script>
+    <script src="https://unpkg.com/html5-qrcode"></script>
     
     <style>
         /* Override global main padding since #admin-app handles header offset */
@@ -177,6 +178,29 @@
         <symbol id="icon-calendar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"/><line x1="16" x2="16" y1="2" y2="6"/><line x1="8" x2="8" y1="2" y2="6"/><line x1="3" x2="21" y1="10" y2="10"/></symbol>
         <symbol id="icon-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
     </svg>
+
+    <!-- Barcode Scanner Modal -->
+    <div id="scanner-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px; text-align: center;">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                <h3 style="margin:0;">Scan ID Card</h3>
+                <button class="header-action" onclick="closeScanner()" style="background:var(--bg-color); border:none; border-radius:50%; width:36px; height:36px; display:flex; align-items:center; justify-content:center; cursor:pointer;">
+                    <svg class="lucide" style="width: 20px; height: 20px;"><use href="#icon-x"/></svg>
+                </button>
+            </div>
+            
+            <div id="reader" style="width: 100%; min-height: 300px; border-radius: 16px; overflow: hidden; background: #000; margin-bottom: 20px;"></div>
+            
+            <div id="scanner-info" style="padding: 16px; background: #f8fafc; border-radius: 16px; margin-bottom: 20px; text-align: left;">
+                <p id="scanner-msg" style="margin:0; font-size:14px; color:var(--text-secondary);">Position the barcode within the frame to approve this request.</p>
+            </div>
+            
+            <div style="display: flex; gap: 12px;">
+                <button class="btn btn-danger-soft" style="flex: 1; padding: 14px;" onclick="closeScanner()">Cancel</button>
+                <button id="force-approve-btn" class="btn btn-primary" style="flex: 1; padding: 14px; display: none;" onclick="forceApprove()">Force Approve</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Member Detail Modal -->
     <div id="member-detail-modal" class="modal-overlay">
