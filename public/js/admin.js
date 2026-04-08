@@ -167,6 +167,10 @@ function renderRequests() {
     }
 
     pendings.forEach(req => {
+        // Resolve Member ID from request or lookup from members list
+        const member = libraryData.members.find(m => m.email === req.userEmail || m.uid === req.uid);
+        const resolvedMemberId = req.memberId && req.memberId !== 'N/A' ? req.memberId : (member ? member.memberId : 'N/A');
+
         const card = document.createElement('div');
         card.className = 'book-card req-card';
         card.innerHTML = `
@@ -178,7 +182,8 @@ function renderRequests() {
                 <div class="book-img-placeholder" style="width:50px; height:70px;"><i data-lucide="book" style="width:24px; height:24px;"></i></div>
                 <div class="book-info">
                     <h3 class="book-title" style="font-size:16px; margin:0;">${req.bookTitle}</h3>
-                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">ID: ${req.userPhone || 'N/A'}</p>
+                    <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0 0;">Member ID: <span style="font-weight:700; color:var(--primary-color);">${resolvedMemberId}</span></p>
+                    <p style="font-size:11px; color:var(--text-muted); margin:2px 0 0 0;">Phone: ${req.userPhone || 'N/A'}</p>
                 </div>
             </div>
             <div class="req-actions" style="display:flex; flex-direction:column; gap:12px;">
@@ -192,7 +197,7 @@ function renderRequests() {
             </div>
         `;
         list.appendChild(card);
-        card.querySelector(`#scan-${req.id}`).onclick = () => openScanner(req.id, req.memberId, req.bookId);
+        card.querySelector(`#scan-${req.id}`).onclick = () => openScanner(req.id, resolvedMemberId, req.bookId);
         card.querySelector(`#approve-${req.id}`).onclick = () => updateRequestStatus(req.id, 'borrowed', req.bookId);
         card.querySelector(`#reject-${req.id}`).onclick = () => updateRequestStatus(req.id, 'rejected', req.bookId);
     });

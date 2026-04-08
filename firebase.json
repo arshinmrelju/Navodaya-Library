@@ -1,5 +1,6 @@
 {
   "hosting": {
+    "site": "navodaymlibrary",
     "public": "public",
     "ignore": [
       "firebase.json",
