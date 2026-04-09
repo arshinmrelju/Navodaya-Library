@@ -141,6 +141,25 @@
     width: 100%;
 }
 
+.btn-google {
+    background: white;
+    color: #374151;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.btn-google:hover {
+    background: #f9fafb;
+    border-color: #d1d5db;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+}
+
+.btn-google img {
+    width: 20px;
+    height: 20px;
+    margin-right: 12px;
+}
+
 /* Book Lists & Cards */
 .book-list {
     display: flex;

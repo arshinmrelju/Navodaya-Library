@@ -227,15 +227,12 @@
         <div class="login-box" style="padding: 40px; border-radius: 24px; box-shadow: var(--shadow-lg);">
             <div style="color:var(--primary-color); margin-bottom: 24px;"><svg class="lucide" style="width:48px; height:48px;"><use href="#icon-lock"/></svg></div>
             <h2 style="color:var(--primary-color); margin-bottom:12px; font-weight: 800; letter-spacing: -1px; font-size: 28px;">Librarian Portal</h2>
-            <p style="color:var(--text-secondary); margin-bottom: 32px; font-size: 15px;">Enter your admin password to manage inventory and requests.</p>
+            <p style="color:var(--text-secondary); margin-bottom: 32px; font-size: 15px;">Sign in with your admin Google account to manage the library.</p>
             
-            <form id="admin-login-form">
-                <div class="input-group">
-                    <label style="text-align:left;">Admin Password</label>
-                    <input type="password" id="admin-password" placeholder="••••••••" required>
-                </div>
-                <button type="submit" class="btn btn-primary w-100" style="padding: 16px;">Access Dashboard</button>
-            </form>
+            <button id="admin-google-login" class="btn btn-google w-100" style="padding: 16px;">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                Sign in with Google
+            </button>
             <a href="index.html"
                 style="display:block; margin-top:32px; color:var(--text-muted); text-decoration:none; font-size:13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;">&larr;
                 Public Library</a>

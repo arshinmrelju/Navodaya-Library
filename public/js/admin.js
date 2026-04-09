@@ -1,7 +1,7 @@
-import { db, auth } from './firebase-config.js';
+import { db, auth, googleProvider } from './firebase-config.js';
 import { 
     onAuthStateChanged, 
-    signInWithEmailAndPassword, 
+    signInWithPopup, 
     signOut 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { 
@@ -56,27 +56,35 @@ let libraryData = {
 };
 
 export function initAdmin() {
-    // Check if user is already "logged in" via sessionStorage
-    if (sessionStorage.getItem('isAdminLoggedIn') === 'true') {
-        showApp();
-    } else {
-        showLogin();
-    }
-
-    // Removed Firebase onAuthStateChanged for hardcoded bypass
-    
-    document.getElementById('admin-login-form').addEventListener('submit', (e) => {
-        e.preventDefault();
-        const pwd = document.getElementById('admin-password').value;
-        
-        // HARDCODED PASSWORD CHECK
-        if (pwd === 'admin123') {
-            sessionStorage.setItem('isAdminLoggedIn', 'true');
-            showApp();
+    // Listen for Auth changes (modern Firebase approach)
+    onAuthStateChanged(auth, (user) => {
+        if (user) {
+            const adminEmail = 'navodhayamlibraryamarakuni@gmail.com';
+            if (user.email === adminEmail) {
+                showApp();
+            } else {
+                console.warn("Unauthorized login attempt:", user.email);
+                showAlertModal("Access Denied. This account is not authorized to access the Librarian Portal.", "Unauthorized");
+                auth.signOut();
+                showLogin();
+            }
         } else {
-            showAlertModal("Login failed. The password is 'admin123'", "Authentication Error");
+            showLogin();
         }
     });
+
+    // Google Login Button Listener
+    const googleBtn = document.getElementById('admin-google-login');
+    if (googleBtn) {
+        googleBtn.addEventListener('click', async () => {
+            try {
+                await signInWithPopup(auth, googleProvider);
+            } catch (error) {
+                console.error("Google Sign-In Error:", error);
+                showAlertModal("Failed to sign in with Google. " + error.message, "Sign-in Error");
+            }
+        });
+    }
 }
 
 function showLogin() {
@@ -95,8 +103,9 @@ function showApp() {
 }
 
 window.logout = function () {
-    sessionStorage.removeItem('isAdminLoggedIn');
-    window.location.reload();
+    signOut(auth).then(() => {
+        window.location.reload();
+    });
 };
 
 function setupListeners() {
@@ -431,11 +440,22 @@ function renderMembers() {
                     </div>
                 </div>
                 <div class="req-actions" style="display:flex; gap:12px;">
-                    <button class="btn btn-success" style="flex:1; padding:12px; font-weight:700;" onclick="approveMember('${m.id}')">Approve</button>
-                    <button class="btn btn-danger-soft" style="flex:1; padding:12px; font-weight:700;" onclick="rejectMember('${m.id}')">Reject</button>
+                    <button class="btn btn-success" style="flex:1; padding:12px; font-weight:700;" id="approve-mem-${m.id}">Approve</button>
+                    <button class="btn btn-danger-soft" style="flex:1; padding:12px; font-weight:700;" id="reject-mem-${m.id}">Reject</button>
                 </div>
             `;
             pendingList.appendChild(card);
+            
+            // Attach event listeners via JS for reliable scoping
+            card.querySelector(`#approve-mem-${m.id}`).onclick = (e) => {
+                e.stopPropagation();
+                window.approveMember(m.id);
+            };
+            card.querySelector(`#reject-mem-${m.id}`).onclick = (e) => {
+                e.stopPropagation();
+                window.rejectMember(m.id);
+            };
+            
             card.onclick = (e) => {
                 if (!e.target.closest('button')) showMemberDetail(m.id);
             };
@@ -692,15 +712,13 @@ window.closeMemberDetail = function() {
 };
 
 window.handleApproveFromDetail = async function(id) {
-    await approveMember(id);
+    await window.approveMember(id);
     closeMemberDetail();
 };
 
 window.handleRejectFromDetail = async function(id) {
-    if (confirm("Reject this application?")) {
-        await rejectMember(id); // rejectMember already has a confirm, but we'll stick to it
-        closeMemberDetail();
-    }
+    await window.rejectMember(id);
+    closeMemberDetail();
 };
 
 window.approveMember = async function(id) {
@@ -711,8 +729,10 @@ window.approveMember = async function(id) {
             status: 'approved',
             memberId: mId
         });
+        showAlertModal(`Member approved successfully! Assigned ID: ${mId}`, "Success");
     } catch(e) {
         console.error("Error approving:", e);
+        showAlertModal("Failed to approve member. Check console for details.", "Error");
     }
 };
 
@@ -720,8 +740,10 @@ window.rejectMember = async function(id) {
     if (confirm("Reject this application?")) {
         try {
             await deleteDoc(doc(db, "members", id));
+            showAlertModal("Application rejected and removed.", "Success");
         } catch(e) {
             console.error(e);
+            showAlertModal("Failed to reject member.", "Error");
         }
     }
 };
