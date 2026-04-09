@@ -292,7 +292,7 @@ function renderLibraryView(searchQuery = '', serverResults = null) {
         let statusHtml = '';
         if (myRequest) {
             if (myRequest.status === 'pending') {
-                statusHtml = '<span class="status-badge" style="background-color:#fff3e0; color:#e65100;">Request Pending</span>';
+                statusHtml = '<span class="status-badge status-pending">Request Pending</span>';
             } else if (myRequest.status === 'borrowed') {
                 statusHtml = '<span class="status-badge status-borrowed">Borrowed</span>';
             }
@@ -552,8 +552,13 @@ window.applyMembership = async function (e) {
     }
 
     const name = document.getElementById('mem-name').value;
+    const age = document.getElementById('mem-age').value;
     const phone = document.getElementById('mem-phone').value;
     const address = document.getElementById('mem-address').value;
+    const bloodGroup = document.getElementById('mem-blood').value;
+    const recommender = document.getElementById('mem-recommender').value;
+    const joiningDate = document.getElementById('mem-joining').value;
+    const deposit = document.getElementById('mem-deposit').value;
 
     try {
         await addDoc(collection(db, "members"), {
@@ -561,8 +566,13 @@ window.applyMembership = async function (e) {
             email: currentUser.email,
             photoURL: currentUser.photoURL || null,
             name: name,
+            age: age,
             phone: phone,
             address: address,
+            bloodGroup: bloodGroup,
+            recommender: recommender,
+            joiningDate: joiningDate,
+            deposit: deposit,
             status: 'pending',
             timestamp: serverTimestamp()
         });
@@ -598,15 +608,56 @@ function renderMembershipView() {
                         <label>Full Name</label>
                         <input type="text" id="mem-name" value="${defaultName}" placeholder="Your Full Name" required>
                     </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="input-group">
+                            <label>Age</label>
+                            <input type="number" id="mem-age" placeholder="Age" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Blood Group</label>
+                            <select id="mem-blood" required>
+                                <option value="" disabled selected>Select</option>
+                                <option value="A+">A+</option>
+                                <option value="A-">A-</option>
+                                <option value="B+">B+</option>
+                                <option value="B-">B-</option>
+                                <option value="O+">O+</option>
+                                <option value="O-">O-</option>
+                                <option value="AB+">AB+</option>
+                                <option value="AB-">AB-</option>
+                                <option value="Unknown">Unknown</option>
+                            </select>
+                        </div>
+                    </div>
+
                     <div class="input-group">
                         <label>Phone Number</label>
                         <input type="tel" id="mem-phone" required pattern="[0-9]{10}" placeholder="10-digit number">
                     </div>
+                    
                     <div class="input-group">
                         <label>Address</label>
                         <input type="text" id="mem-address" placeholder="e.g. 123 Main St..." required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100" style="padding: 16px;">Submit Application</button>
+
+                    <div class="input-group">
+                        <label>Recommender</label>
+                        <input type="text" id="mem-recommender" placeholder="Who recommended you?">
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                        <div class="input-group">
+                            <label>Joining Date</label>
+                            <input type="date" id="mem-joining" value="${new Date().toISOString().split('T')[0]}" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Deposit (₹)</label>
+                            <input type="number" id="mem-deposit" placeholder="Amount" value="0">
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" style="padding: 16px; margin-top: 8px;">Submit Application</button>
                 </form>
             </div>
         `;
@@ -783,20 +834,15 @@ function renderMyBooksView() {
     libraryData.requests.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0)).forEach(req => {
         const book = libraryData.books.find(b => b.id === req.bookId);
 
-        let statusHtml = '';
-        let color = '#e65100';
-        let bg = '#fff3e0';
+        let statusHtml = req.status.charAt(0).toUpperCase() + req.status.slice(1);
+        let statusClass = `status-${req.status}`;
 
         if (req.status === 'borrowed') {
-            statusHtml = 'Borrowed';
-            color = '#2e7d32';
-            bg = '#e8f5e9';
+            statusClass = 'status-borrowed';
         } else if (req.status === 'returned') {
-            statusHtml = 'Returned';
-            color = '#667781';
-            bg = '#f1f5f9';
+            statusClass = 'status-returned';
         } else if (req.status === 'pending') {
-            statusHtml = 'Pending';
+            statusClass = 'status-pending';
         }
 
         const card = document.createElement('div');
@@ -809,7 +855,7 @@ function renderMyBooksView() {
                 <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:4px;">
                     <h3 class="book-title" style="margin:0;">${req.bookTitle || 'Book'}</h3>
                 </div>
-                <div style="margin-bottom:12px;">${statusHtml}</div>
+                <div style="margin-bottom:12px;"><span class="status-badge ${statusClass}">${statusHtml}</span></div>
                 <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:11px; font-weight:700;">
                     <i data-lucide="clock"></i> ${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString() : 'Just now'}
                 </div>

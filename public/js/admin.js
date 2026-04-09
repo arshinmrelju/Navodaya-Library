@@ -646,10 +646,48 @@ window.showMemberDetail = function(memberId) {
                 </div>
             </div>
 
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div>
+                        <p style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Age</p>
+                        <p style="font-size: 14px; font-weight: 700; color: var(--text-primary);">${m.age || 'N/A'}</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div>
+                        <p style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Blood</p>
+                        <p style="font-size: 14px; font-weight: 700; color: var(--text-primary);">${m.bloodGroup || 'N/A'}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><svg class="lucide" style="width:24px; height:24px;"><use href="#icon-users"/></svg></div>
+                <div>
+                    <p style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Recommender</p>
+                    <p style="font-size: 15px; font-weight: 500; color: var(--text-primary);">${m.recommender || 'Direct Application'}</p>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div>
+                        <p style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Joined</p>
+                        <p style="font-size: 14px; font-weight: 700; color: var(--text-primary);">${m.joiningDate || 'N/A'}</p>
+                    </div>
+                </div>
+                <div style="display: flex; align-items: center; gap: 12px; padding: 12px; background: #f8fafc; border-radius: 12px; border: 1px solid var(--border-color);">
+                    <div>
+                        <p style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Deposit</p>
+                        <p style="font-size: 14px; font-weight: 700; color: var(--text-primary);">₹${m.deposit || '0'}</p>
+                    </div>
+                </div>
+            </div>
+
             <div style="display: flex; align-items: center; gap: 16px; padding: 16px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
                 <div style="color: var(--primary-color);"><svg class="lucide" style="width:24px; height:24px;"><use href="#icon-calendar"/></svg></div>
                 <div>
-                    <p style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Application Date</p>
+                    <p style="font-size: 11px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Submission Date</p>
                     <p style="font-size: 15px; font-weight: 500; color: var(--text-primary);">${m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleString() : 'N/A'}</p>
                 </div>
             </div>
