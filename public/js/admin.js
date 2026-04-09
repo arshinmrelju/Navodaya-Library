@@ -180,47 +180,60 @@ function setupDataListeners() {
 }
 
 function setupSyncProgress() {
+    console.log("Setting up sync progress listener...");
     const syncDoc = doc(db, "metadata", "sync_stats");
     onSnapshot(syncDoc, (snapshot) => {
-        if (!snapshot.exists()) return;
-        
-        const data = snapshot.data();
-        const synced = parseInt(data.synced_books) || 0;
-        const total = parseInt(data.total_books) || 0;
-        const left = Math.max(0, total - synced);
-        
         const container = document.getElementById('sync-progress-container');
         const bar = document.getElementById('sync-progress-bar');
         const text = document.getElementById('sync-count-text');
         const msg = document.getElementById('sync-status-msg');
         const iconDiv = document.getElementById('sync-icon');
         const percentDiv = document.getElementById('sync-percent-text');
+
+        if (!snapshot.exists()) {
+            console.warn("Sync stats document does not exist in Firestore.");
+            if (syncClickCount >= 3 && msg) {
+                msg.textContent = "Waiting for first sync run from Google Sheets...";
+            }
+            return;
+        }
         
-        if (total > 0 && container) {
-            // Only show if either it's already visible or we have the 3-tap secret
+        const data = snapshot.data();
+        console.log("Sync data received:", data);
+        
+        const synced = parseInt(data.synced_books) || 0;
+        const total = parseInt(data.total_books) || 0;
+        const left = Math.max(0, total - synced);
+        
+        if (container) {
+            // Only show if we have the 3-tap secret
             if (syncClickCount >= 3) {
                 container.style.display = 'block';
             }
             
-            const percent = Math.min(100, Math.floor((synced / total) * 100));
-            bar.style.width = `${percent}%`;
-            
-            if (percentDiv) percentDiv.textContent = `${percent}%`;
-            
-            if (percent < 100) {
-                text.innerHTML = `<span style="color:var(--primary-color)">${synced.toLocaleString()}</span> synced | <span style="color:var(--danger-color)">${left.toLocaleString()}</span> left`;
-                msg.textContent = `Syncing from Google Sheets... Last activity: ${data.last_run ? new Date(data.last_run).toLocaleTimeString() : 'Just now'}`;
-                iconDiv.innerHTML = '<i data-lucide="refresh-cw" class="lucide-spin"></i>';
-                iconDiv.style.color = 'var(--primary-color)';
-            } else {
-                text.textContent = `${total.toLocaleString()} Books Total`;
-                msg.innerHTML = '<span style="color:var(--success-color); font-weight:700;">✓ Database Fully Synced</span>. All records from Sheets are in Firestore.';
-                iconDiv.style.color = 'var(--success-color)';
-                iconDiv.innerHTML = '<i data-lucide="check-circle"></i>';
-                if (percentDiv) percentDiv.style.color = 'var(--success-color)';
+            if (total > 0) {
+                const percent = Math.min(100, Math.floor((synced / total) * 100));
+                if (bar) bar.style.width = `${percent}%`;
+                if (percentDiv) percentDiv.textContent = `${percent}%`;
                 
-                // Optional: Hide after 5 seconds of being at 100% OR leave it as a status badge
-                // setTimeout(() => { container.style.display = 'none'; }, 5000);
+                if (percent < 100) {
+                    if (text) text.innerHTML = `<span style="color:var(--primary-color)">${synced.toLocaleString()}</span> synced | <span style="color:var(--danger-color)">${left.toLocaleString()}</span> left`;
+                    if (msg) msg.textContent = `Syncing from Google Sheets... Last activity: ${data.last_run ? new Date(data.last_run).toLocaleTimeString() : 'Just now'}`;
+                    if (iconDiv) {
+                        iconDiv.innerHTML = '<i data-lucide="refresh-cw" class="lucide-spin"></i>';
+                        iconDiv.style.color = 'var(--primary-color)';
+                    }
+                } else {
+                    if (text) text.textContent = `${total.toLocaleString()} Books Total`;
+                    if (msg) msg.innerHTML = '<span style="color:var(--success-color); font-weight:700;">✓ Database Fully Synced</span>. All records from Sheets are in Firestore.';
+                    if (iconDiv) {
+                        iconDiv.style.color = 'var(--success-color)';
+                        iconDiv.innerHTML = '<i data-lucide="check-circle"></i>';
+                    }
+                    if (percentDiv) percentDiv.style.color = 'var(--success-color)';
+                }
+            } else {
+                if (msg) msg.textContent = "Total books count is 0. Check Google Sheets connection.";
             }
             lucide.createIcons();
         }
