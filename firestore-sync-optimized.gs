@@ -193,7 +193,12 @@ function syncMembersFromSheet() {
       continue;
     }
 
+    // ➕ ADD TO BATCH
     const docPath = `projects/${FIREBASE_CONFIG.project_id}/databases/(default)/documents/members/${docId}`;
+    
+    // Check if memberId is a valid number, if not, try to keep it as is
+    const memberId = String(row[1]);
+    
     writeBatch.push({
       update: {
         name: docPath,
@@ -226,31 +231,18 @@ function syncMembersFromFirestore() {
   const lastFsSyncTime = props.getProperty('LAST_FS_MEMBER_SYNC_TIME') || "2000-01-01T00:00:00Z";
   
   const token = ScriptApp.getOAuthToken();
-  // Filter for members updated since last sync AND not updated by the sheet to avoid loops
+  // Filter for members updated since last sync. 
+  // We handle the 'source' loop prevention in memory to avoid query complexity with missing fields.
   const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.project_id}/databases/(default)/documents:runQuery`;
   
   const query = {
     structuredQuery: {
       from: [{ collectionId: "members" }],
       where: {
-        compositeFilter: {
-          op: "AND",
-          filters: [
-            {
-              fieldFilter: {
-                field: { fieldPath: "last_updated" },
-                op: "GREATER_THAN",
-                value: { stringValue: lastFsSyncTime }
-              }
-            },
-            {
-              fieldFilter: {
-                field: { fieldPath: "source" },
-                op: "NOT_EQUAL",
-                value: { stringValue: "sheet" }
-              }
-            }
-          ]
+        fieldFilter: {
+          field: { fieldPath: "last_updated" },
+          op: "GREATER_THAN",
+          value: { timestampValue: lastFsSyncTime }
         }
       }
     }
@@ -271,10 +263,7 @@ function syncMembersFromFirestore() {
   }
 
   const results = JSON.parse(response.getContentText());
-  if (!results || results.length === 0 || !results[0].document) {
-    console.log("No new updates from Firestore.");
-    return;
-  }
+  if (!results || results.length === 0) return;
 
   const sheetData = sheet.getDataRange().getValues();
   const emailCol = 6; // Column G (0-indexed)
@@ -285,6 +274,9 @@ function syncMembersFromFirestore() {
     const fields = res.document.fields;
     const member = decodeFirestoreFields(fields);
     
+    // SKIP if this document was just pushed from the sheet to prevent loops
+    if (member.source === 'sheet') return;
+
     // Find matching row in sheet
     let rowIndex = -1;
     for (let i = 1; i < sheetData.length; i++) {
@@ -313,11 +305,11 @@ function syncMembersFromFirestore() {
     if (rowIndex > 0) {
       // Update existing
       sheet.getRange(rowIndex, 1, 1, 12).setValues([rowData]);
-      console.log(`Updated member: ${member.name}`);
+      console.log(`Updated member in sheet: ${member.name}`);
     } else {
       // Append new
       sheet.appendRow(rowData);
-      console.log(`Added new member: ${member.name}`);
+      console.log(`Added new member to sheet: ${member.name}`);
     }
   });
 
@@ -395,6 +387,11 @@ function encodeFirestoreFields(data) {
   for (const key in data) {
     if (typeof data[key] === 'boolean') {
       fields[key] = { booleanValue: data[key] };
+    } else if (key === 'timestamp' || key === 'last_updated') {
+      // Convert to RFC3339 format for Firestore timestampValue
+      let date = data[key] instanceof Date ? data[key] : new Date(data[key]);
+      if (isNaN(date.getTime())) date = new Date();
+      fields[key] = { timestampValue: date.toISOString() };
     } else {
       fields[key] = { stringValue: String(data[key]) };
     }
@@ -411,19 +408,46 @@ function onOpen() {
       .addItem('Run Book Sync (Books → Firebase)', 'runIncrementalSync')
       .addItem('Run Member Sync (Bi-directional)', 'runMemberSync')
       .addSeparator()
-      .addItem('Reset All Sync Progress', 'resetAllSyncPointers')
+      .addItem('Reset Member Sync (Fix Deleted Collection)', 'resetMemberSyncProgress')
+      .addItem('Reset Book Sync Progress', 'resetBookSyncOnly')
       .addToUi();
 }
 
 /**
- * 🧹 RESET POINTERS
+ * 🗑️ RESET MEMBER SYNC (Safe for Books)
  */
-function resetAllSyncPointers() {
+function resetMemberSyncProgress() {
   const props = PropertiesService.getScriptProperties();
-  props.deleteProperty('LAST_SYNC_ROW');
   props.deleteProperty('LAST_SYNC_ROW_MEMBERS');
   props.deleteProperty('LAST_FS_MEMBER_SYNC_TIME');
-  SpreadsheetApp.getUi().alert("All sync pointers have been reset.");
+  
+  // Clear member hashes
+  resetMemberSyncHashes();
+  
+  SpreadsheetApp.getUi().alert("Member sync has been reset. You can now run 'Run Member Sync' to recreate the collection. (Books were not affected)");
+}
+
+/**
+ * 🧹 RESET BOOK SYNC ONLY
+ */
+function resetBookSyncOnly() {
+  PropertiesService.getScriptProperties().deleteProperty('LAST_SYNC_ROW');
+  SpreadsheetApp.getUi().alert("Book sync pointer reset. (Members were not affected)");
+}
+
+/**
+ * 🗑️ CLEAR MEMBER HASHES (Forces full re-sync)
+ */
+function resetMemberSyncHashes() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sheet = ss.getSheetByName(SYNC_CONFIG_MEMBERS.SHEET_NAME);
+  if (!sheet) return;
+  
+  const lastRow = sheet.getLastRow();
+  if (lastRow < SYNC_CONFIG_MEMBERS.START_ROW) return;
+  
+  sheet.getRange(SYNC_CONFIG_MEMBERS.START_ROW, SYNC_CONFIG_MEMBERS.HASH_COL, lastRow - SYNC_CONFIG_MEMBERS.START_ROW + 1, 1).clearContent();
+  console.log("Member hashes cleared.");
 }
 
 /**
