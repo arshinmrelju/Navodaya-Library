@@ -574,7 +574,9 @@ window.applyMembership = async function (e) {
             joiningDate: joiningDate,
             deposit: deposit,
             status: 'pending',
-            timestamp: serverTimestamp()
+            timestamp: serverTimestamp(),
+            last_updated: serverTimestamp(),
+            source: 'web'
         });
         showAlertModal('Application submitted successfully!', 'Success');
 

@@ -775,14 +775,27 @@ window.handleRejectFromDetail = async function(id) {
 };
 
 window.approveMember = async function(id) {
-    const randDigits = Math.floor(1000 + Math.random() * 9000);
-    const mId = "NYD-" + randDigits;
     try {
+        // Fetch current max ID to generate next sequential ID
+        // Note: In a high-concurrency environment, a transaction would be better
+        const q = query(collection(db, "members"), orderBy("memberId", "desc"), limit(1));
+        const snap = await getDocs(q);
+        let nextId = 1;
+        
+        if (!snap.empty) {
+            const lastMemberId = snap.docs[0].data().memberId;
+            if (lastMemberId && !isNaN(lastMemberId)) {
+                nextId = parseInt(lastMemberId) + 1;
+            }
+        }
+
         await updateDoc(doc(db, "members", id), {
             status: 'approved',
-            memberId: mId
+            memberId: nextId,
+            last_updated: serverTimestamp(),
+            source: 'web'
         });
-        showAlertModal(`Member approved successfully! Assigned ID: ${mId}`, "Success");
+        showAlertModal(`Member approved successfully! Assigned ID: ${nextId}`, "Success");
     } catch(e) {
         console.error("Error approving:", e);
         showAlertModal("Failed to approve member. Check console for details.", "Error");
