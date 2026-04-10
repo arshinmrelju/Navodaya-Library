@@ -186,9 +186,14 @@ function syncMembersFromSheet() {
       continue;
     }
 
-    // Generate safe docId: Email -> Phone -> MemberId
-    let docIdRaw = email || phone || ("MEM_" + memberId);
-    let docId = docIdRaw.replace(/[^a-zA-Z0-9]/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    if (!memberId) {
+      // Skip forward sync for rows without a memberId assigned by admin
+      updatedHashes.push([row[SYNC_CONFIG_MEMBERS.HASH_COL - 1]]);
+      continue;
+    }
+
+    // Generate strict docId: MEM_XX
+    let docId = "MEM_" + memberId;
     
     const memberData = {
       memberId: memberId,

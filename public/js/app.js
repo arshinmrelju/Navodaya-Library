@@ -98,9 +98,10 @@ function setupFirestoreListeners() {
         });
 
         // Listen for membership (user specific)
-        const mDocId = currentUser.email.replace(/[^a-zA-Z0-9]/g, '_');
-        onSnapshot(doc(db, "members", mDocId), (docSnap) => {
-            if (docSnap.exists()) {
+        const q = query(collection(db, "members"), where("email", "==", currentUser.email), limit(1));
+        onSnapshot(q, (snapshot) => {
+            if (!snapshot.empty) {
+                const docSnap = snapshot.docs[0];
                 libraryData.member = { id: docSnap.id, ...docSnap.data() };
             } else {
                 libraryData.member = null;
@@ -561,8 +562,7 @@ window.applyMembership = async function (e) {
     const deposit = document.getElementById('mem-deposit').value;
 
     try {
-        const mDocId = currentUser.email.replace(/[^a-zA-Z0-9]/g, '_');
-        await setDoc(doc(db, "members", mDocId), {
+        await addDoc(collection(db, "members"), {
             uid: currentUser.uid,
             email: currentUser.email,
             photoURL: currentUser.photoURL || null,

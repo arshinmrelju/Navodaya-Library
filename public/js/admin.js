@@ -16,6 +16,8 @@ import {
     limit,
     query,
     getDocs,
+    getDoc,
+    setDoc,
     startAfter,
     where
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
@@ -803,12 +805,27 @@ window.approveMember = async function(id) {
             }
         }
 
-        await updateDoc(doc(db, "members", id), {
+        const newDocId = `MEM_${nextId}`;
+        const newDocRef = doc(db, "members", newDocId);
+        const oldDocRef = doc(db, "members", id);
+        
+        const oldDocSnap = await getDoc(oldDocRef);
+        if (!oldDocSnap.exists()) {
+            throw new Error("Pending member document not found.");
+        }
+        
+        const memberData = oldDocSnap.data();
+
+        await setDoc(newDocRef, {
+            ...memberData,
             status: 'approved',
-            memberId: nextId,
+            memberId: String(nextId),
             last_updated: serverTimestamp(),
             source: 'web'
         });
+
+        await deleteDoc(oldDocRef);
+
         showAlertModal(`Member approved successfully! Assigned ID: ${nextId}`, "Success");
     } catch(e) {
         console.error("Error approving:", e);
