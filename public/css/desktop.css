@@ -90,13 +90,17 @@
     /* ── Header spans full width ── */
     .app-header {
         grid-area: header;
-        grid-template-columns: 240px 1fr 240px;
+        position: relative; /* Remove fixed position so it sits in grid row 1 */
+        display: grid;
+        grid-template-columns: 240px 1fr 64px;
         /* Balanced side columns */
         padding-left: 20px;
         padding-right: 20px;
+        height: 80px; /* Explicit desktop height */
         background: rgba(255, 255, 255, 0.98);
         border-bottom: 1px solid rgba(8, 51, 68, 0.08);
         box-shadow: 0 4px 20px rgba(0, 0, 0, 0.02);
+        z-index: 100;
     }
 
     .app-title {
@@ -177,7 +181,7 @@
         bottom: 0;
         background: radial-gradient(circle at top right, rgba(14, 116, 144, 0.05), transparent),
                     white !important;
-        display: flex !important;
+        display: flex; /* Remove !important so JS can hide it after login */
         align-items: center;
         justify-content: center;
     }
@@ -206,20 +210,17 @@
     /* ── Main Content ── */
     main {
         grid-area: content;
-        overflow-y: auto;
-        padding-top: 0 !important;
-        /* header is in grid row above */
-        padding-bottom: 40px;
-        padding-left: 0;
-        padding-right: 0;
+        overflow: hidden; 
+        padding: 0;
         height: 100%;
     }
 
     /* Inner content max width + centering */
     .view {
-        max-width: 900px;
+        max-width: 1000px;
         margin: 0 auto;
-        padding: 32px 40px 48px 40px;
+        padding: 40px 40px 80px 40px; /* Increased bottom padding for footer clearance */
+        height: 100%;
     }
 
     /* Book grid — 3 columns on large desktop */
@@ -235,10 +236,6 @@
 
     /* Welcome view — centered hero */
     #welcome-view.active-view {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
         min-height: calc(100vh - 64px);
         padding: 48px 40px !important;
         background: radial-gradient(circle at 50% 50%, rgba(14, 114, 144, 0.03) 0%, transparent 70%);
@@ -248,6 +245,7 @@
         max-width: 480px;
         width: 100%;
         text-align: center;
+        margin: 0 auto;
     }
 
     .welcome-title {
@@ -516,7 +514,7 @@
     }
 
     .view {
-        max-width: 1040px;
+        max-width: 1140px;
     }
 
     .book-list {
