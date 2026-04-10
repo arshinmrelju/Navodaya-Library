@@ -141,46 +141,68 @@ function runMemberSync() {
 function syncMembersFromSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sheet = ss.getSheetByName(SYNC_CONFIG_MEMBERS.SHEET_NAME);
-  if (!sheet) return;
+  if (!sheet) {
+    SpreadsheetApp.getUi().alert("Error: Sheet '" + SYNC_CONFIG_MEMBERS.SHEET_NAME + "' not found.");
+    return;
+  }
 
-  const totalRows = sheet.getLastRow();
+  const lastRow = sheet.getLastRow();
   const props = PropertiesService.getScriptProperties();
-  let lastProcessed = parseInt(props.getProperty('LAST_SYNC_ROW_MEMBERS')) || (SYNC_CONFIG_MEMBERS.START_ROW - 1);
+  const startRow = SYNC_CONFIG_MEMBERS.START_ROW; // Force start from Row 2 to recreate collection
 
-  if (lastProcessed >= totalRows) lastProcessed = SYNC_CONFIG_MEMBERS.START_ROW - 1;
+  if (lastRow < startRow) {
+    SpreadsheetApp.getUi().alert("No members found in the sheet (starting at Row 2).");
+    return;
+  }
 
-  const startRow = lastProcessed + 1;
-  const numRows = Math.min(SYNC_CONFIG_MEMBERS.BATCH_SIZE, totalRows - startRow + 1);
-  if (numRows <= 0) return;
+  // Ensure the sheet has enough columns (at least Column M for Hashes)
+  if (sheet.getMaxColumns() < SYNC_CONFIG_MEMBERS.HASH_COL) {
+    sheet.insertColumnsAfter(sheet.getMaxColumns(), SYNC_CONFIG_MEMBERS.HASH_COL - sheet.getMaxColumns());
+    sheet.getRange(1, SYNC_CONFIG_MEMBERS.HASH_COL).setValue("Sync Hash");
+  }
 
+  const numRows = lastRow - startRow + 1;
   const dataRange = sheet.getRange(startRow, 1, numRows, SYNC_CONFIG_MEMBERS.HASH_COL);
   const data = dataRange.getValues();
+  
   const writeBatch = [];
   const updatedHashes = [];
+  let syncCount = 0;
 
   for (let i = 0; i < data.length; i++) {
     const row = data[i];
-    const email = String(row[6]); // Column G
-    const phone = String(row[5]); // Column F
-    if (!email && !phone) {
+    let memberId = String(row[1] || "").trim(); // Column B
+    let email = String(row[6] || "").trim().toLowerCase(); // Column G
+    let phone = String(row[5] || "").trim(); // Column F
+    
+    // Safety check: skip headers or empty rows if all ID fields are missing
+    if (!email && !phone && !memberId) {
+      updatedHashes.push([row[SYNC_CONFIG_MEMBERS.HASH_COL - 1]]);
+      continue;
+    }
+    
+    if (email === "email id") { // Skip header duplicate
       updatedHashes.push([row[SYNC_CONFIG_MEMBERS.HASH_COL - 1]]);
       continue;
     }
 
-    // Use email or phone as doc ID basis if UID is not known
-    const docId = email ? email.replace(/[^a-zA-Z0-9]/g, '_') : phone;
+    // Generate safe docId: Email -> Phone -> MemberId
+    let docIdRaw = email || phone || ("MEM_" + memberId);
+    let docId = docIdRaw.replace(/[^a-zA-Z0-9]/g, '_').replace(/[^a-zA-Z0-9_]/g, '');
+    
     const memberData = {
-      memberId: String(row[1]),
-      name: String(row[2]),
-      address: String(row[3]),
-      age: String(row[4]),
-      phone: String(row[5]),
-      email: String(row[6]),
-      recommender: String(row[7]),
-      bloodGroup: String(row[8]),
-      joiningDate: String(row[9]),
-      deposit: String(row[10]),
-      status: String(row[11] || 'approved'),
+      memberId: memberId,
+      name: String(row[2] || ""),
+      address: String(row[3] || ""),
+      age: String(row[4] || ""),
+      phone: phone,
+      email: email,
+      recommender: String(row[7] || ""),
+      bloodGroup: String(row[8] || ""),
+      joiningDate: String(row[9] || ""),
+      deposit: String(row[10] || ""),
+      status: String(row[11] || 'approved').toLowerCase(), // Standardize to lowercase
+      timestamp: new Date().toISOString(),
       last_updated: new Date().toISOString(),
       source: 'sheet'
     };
@@ -193,12 +215,7 @@ function syncMembersFromSheet() {
       continue;
     }
 
-    // ➕ ADD TO BATCH
     const docPath = `projects/${FIREBASE_CONFIG.project_id}/databases/(default)/documents/members/${docId}`;
-    
-    // Check if memberId is a valid number, if not, try to keep it as is
-    const memberId = String(row[1]);
-    
     writeBatch.push({
       update: {
         name: docPath,
@@ -207,16 +224,25 @@ function syncMembersFromSheet() {
     });
 
     updatedHashes.push([currentHash]);
+    syncCount++;
 
-    if (writeBatch.length >= 500) {
+    if (writeBatch.length >= 200) {
       commitBatch(writeBatch);
       writeBatch.length = 0;
     }
   }
 
   if (writeBatch.length > 0) commitBatch(writeBatch);
+  
+  // Update hashes in sheet
   sheet.getRange(startRow, SYNC_CONFIG_MEMBERS.HASH_COL, numRows, 1).setValues(updatedHashes);
-  props.setProperty('LAST_SYNC_ROW_MEMBERS', (startRow + numRows - 1).toString());
+  props.setProperty('LAST_SYNC_ROW_MEMBERS', lastRow.toString());
+  
+  if (syncCount > 0) {
+    SpreadsheetApp.getUi().alert(`Successfully created/updated ${syncCount} members in Firestore!`);
+  } else {
+    SpreadsheetApp.getUi().alert("No changes detected. All members are already in Firestore.");
+  }
 }
 
 /**
@@ -408,9 +434,55 @@ function onOpen() {
       .addItem('Run Book Sync (Books → Firebase)', 'runIncrementalSync')
       .addItem('Run Member Sync (Bi-directional)', 'runMemberSync')
       .addSeparator()
+      .addItem('🔍 Test Connection to Firestore', 'testFirestoreConnection')
+      .addItem('🚀 FORCE Re-sync All Members', 'runFullMemberSyncForce')
+      .addSeparator()
       .addItem('Reset Member Sync (Fix Deleted Collection)', 'resetMemberSyncProgress')
       .addItem('Reset Book Sync Progress', 'resetBookSyncOnly')
       .addToUi();
+}
+
+/**
+ * 🔍 TEST CONNECTION
+ */
+function testFirestoreConnection() {
+  const token = ScriptApp.getOAuthToken();
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.project_id}/databases/(default)/documents/metadata/connection_test`;
+  const options = {
+    method: "patch",
+    contentType: "application/json",
+    headers: { Authorization: "Bearer " + token },
+    payload: JSON.stringify({
+      fields: { 
+        status: { stringValue: "ok" },
+        last_test: { timestampValue: new Date().toISOString() }
+      }
+    }),
+    muteHttpExceptions: true
+  };
+  const resp = UrlFetchApp.fetch(url, options);
+  const code = resp.getResponseCode();
+  const body = resp.getContentText();
+  
+  if (code === 200 || code === 204) {
+    SpreadsheetApp.getUi().alert("✅ Success! Script can talk to Firestore. (Code " + code + ")");
+  } else {
+    SpreadsheetApp.getUi().alert("❌ Connection Failed!\nCode: " + code + "\nResponse: " + body + "\n\nMake sure Project ID '" + FIREBASE_CONFIG.project_id + "' is correct.");
+  }
+}
+
+/**
+ * 🚀 FORCE FULL SYNC (Ignore Hashes)
+ */
+function runFullMemberSyncForce() {
+  const ui = SpreadsheetApp.getUi();
+  const response = ui.alert('Force Sync', 'Are you sure you want to force re-upload ALL members? This ignores all hashes.', ui.ButtonSet.YES_NO);
+  
+  if (response == ui.Button.YES) {
+    // Temporarily disable hash checking by clearing memory
+    resetMemberSyncProgress();
+    syncMembersFromSheet();
+  }
 }
 
 /**
