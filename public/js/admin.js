@@ -532,7 +532,7 @@ async function fetchMembersBatch() {
     libraryData.isMembersLoading = true;
     renderMembers();
 
-    const batchSize = 10;
+    const batchSize = 500;
     try {
         let q = query(
             collection(db, "members"), 
@@ -579,7 +579,12 @@ window.showMemberDetail = function(memberId) {
         ? '<span style="background:#ecfdf5; color:#059669; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase;">Active Member</span>'
         : '<span style="background:#fff7ed; color:#9a3412; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase;">Pending Approval</span>';
 
-    const memberRequests = libraryData.requests ? libraryData.requests.filter(req => req.userEmail === m.email || req.userId === m.uid) : [];
+    const memberRequests = libraryData.requests ? libraryData.requests.filter(req => {
+        const emailMatch = Boolean(m.email && m.email !== "" && m.email !== "N/A" && req.userEmail === m.email);
+        const uidMatch = Boolean(m.uid && m.uid !== "" && (req.uid === m.uid || req.userId === m.uid));
+        const memberIdMatch = Boolean(m.memberId && m.memberId !== "" && m.memberId !== "N/A" && req.memberId && req.memberId.toString() === m.memberId.toString());
+        return emailMatch || uidMatch || memberIdMatch;
+    }) : [];
     memberRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
     let historyHtml = '<div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;"><h3 style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px;"><i data-lucide="history" style="width:18px; height:18px; margin-right:8px; vertical-align:middle; display:inline-block;"></i>Borrowing History</h3>';
