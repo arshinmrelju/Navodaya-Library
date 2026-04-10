@@ -272,7 +272,12 @@ function setupSyncProgress() {
 
 function navigateTo(viewId) {
     views.forEach(view => view.classList.remove('active-view'));
-    document.getElementById(viewId).classList.add('active-view');
+    const target = document.getElementById(viewId);
+    if (target) {
+        target.classList.add('active-view');
+        // Reset scroll position to top when switching views in admin
+        target.scrollTop = 0;
+    }
     currentView = viewId;
 
     if (viewId === 'requests-view') {
@@ -1130,8 +1135,12 @@ window.printMemberList = function() {
         return;
     }
 
-    // Sort alphabetically by name
-    list.sort((a, b) => a.name.localeCompare(b.name));
+    // Sort numerically by Member ID (1, 2, 3...)
+    list.sort((a, b) => {
+        const idA = parseInt(a.memberId || 0);
+        const idB = parseInt(b.memberId || 0);
+        return idA - idB;
+    });
 
     const printArea = document.getElementById('printable-card-area');
     

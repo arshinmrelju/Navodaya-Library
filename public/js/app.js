@@ -185,16 +185,21 @@ function setupEventListeners() {
 function navigateTo(viewId, action = null) {
     views.forEach(view => view.classList.remove('active-view'));
     const target = document.getElementById(viewId);
-    if (target) target.classList.add('active-view');
+    if (target) {
+        target.classList.add('active-view');
+        
+        // Reset scroll for detail views or primary entry views
+        if (viewId === 'book-detail-view' || viewId === 'welcome-view' || action === 'reset-scroll') {
+            target.scrollTop = 0;
+        }
+    }
+    
     currentView = viewId;
 
     const header = document.getElementById('app-header');
     const bottomNav = document.getElementById('bottom-nav');
 
-    if (viewId === 'welcome-view') {
-        if (header) header.style.display = 'grid';
-        if (bottomNav) bottomNav.style.display = 'none';
-    } else if (viewId === 'genre-selection-view') {
+    if (viewId === 'welcome-view' || viewId === 'genre-selection-view') {
         if (header) header.style.display = 'grid';
         if (bottomNav) bottomNav.style.display = 'none';
     } else {
@@ -215,7 +220,7 @@ function navigateTo(viewId, action = null) {
         if (!currentUser) {
             document.getElementById('borrowed-list').innerHTML = `
                 <div style="text-align: center; padding: 60px 20px;">
-                    <div style="background: var(--glass-bg); padding: 32px; border-radius: 24px; border: 1px solid var(--border-color);">
+                    <div class="glass" style="padding: 32px; border-radius: 24px; border: 1px solid var(--border-color);">
                         <i data-lucide="user-plus" style="width: 48px; height: 48px; color: var(--primary-color); margin-bottom: 20px;"></i>
                         <h3 style="margin-bottom: 8px;">Identify Yourself</h3>
                         <p style="color: var(--text-secondary); margin-bottom: 24px; font-size: 14px;">Sign in with Google to view and manage your borrowed books.</p>
@@ -312,15 +317,23 @@ function renderLibraryView(searchQuery = '', serverResults = null) {
         card.innerHTML = `
             <div class="book-img-placeholder" style="background: var(--bg-color); position: relative;">
                 <i data-lucide="book" style="width:40px; height:40px; color:var(--primary-light); opacity:0.5;"></i>
+                <div style="position: absolute; top: 8px; right: 8px; font-size: 8px; font-weight: 800; color: white; background: var(--primary-color); padding: 2px 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px;">${section}</div>
                 <span style="position: absolute; bottom: 8px; right: 8px; font-size: 10px; font-weight: 800; color: var(--text-muted); opacity: 0.5;">#${book.stock_number || '000'}</span>
             </div>
             <div class="book-info">
-                <h3 class="book-title">${book.title}</h3>
-                <p class="book-author">${book.author}</p>
-                <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px; font-weight:700; margin-bottom:10px;">
-                    <i data-lucide="map-pin"></i> ${locationText}
+                <div style="flex-grow: 1;">
+                    <h3 class="book-title">${book.title}</h3>
+                    <p class="book-author">${book.author}</p>
+                    <div style="display:flex; align-items:center; gap:6px; color:var(--text-muted); font-size:12px; font-weight:700; margin-bottom:12px;">
+                        <i data-lucide="map-pin"></i> ${locationText}
+                    </div>
                 </div>
-                ${statusHtml}
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-top: auto;">
+                    ${statusHtml}
+                    <div class="card-action-hint">
+                        Explore <i data-lucide="arrow-right" style="width:14px; height:14px;"></i>
+                    </div>
+                </div>
             </div>
         `;
 

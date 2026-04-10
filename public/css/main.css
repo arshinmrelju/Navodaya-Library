@@ -129,18 +129,21 @@ body {
 /* Main Content Area */
 main {
     flex-grow: 1;
-    overflow-y: auto;
+    overflow: hidden;
     position: relative;
-    padding-top: calc(64px + env(safe-area-inset-top));
-    padding-bottom: calc(100px + env(safe-area-inset-bottom));
-    scroll-behavior: smooth;
+    /* Move padding to .view so scroll containers handle their own clearance */
+    padding-top: 0;
+    padding-bottom: 0;
 }
 
 /* Views Management */
 .view {
     display: none;
-    padding: 12px 20px 24px 20px;
+    padding: calc(64px + 12px + env(safe-area-inset-top)) 20px calc(100px + 24px + env(safe-area-inset-bottom)) 20px;
     animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+    height: 100%;
+    overflow-y: auto;
+    scroll-behavior: smooth;
 }
 
 .view.active-view {
@@ -504,11 +507,16 @@ main {
 
 /* Base Footer Reset (Mobile) */
 .footer-nav {
-    display: none; /* Hide new navigation links on mobile per user request */
+    display: none;
+    /* Hide new navigation links on mobile per user request */
 }
 
 /* Ensure new structural divs don't break existing mobile flow */
-.footer-grid, .footer-col, .footer-brand, .footer-info, .footer-base {
+.footer-grid,
+.footer-col,
+.footer-brand,
+.footer-info,
+.footer-base {
     display: block;
     width: 100%;
 }
