@@ -98,8 +98,8 @@ function setupFirestoreListeners() {
         });
 
         // Listen for membership (user specific)
-        const q = query(collection(db, "members"), where("email", "==", currentUser.email), limit(1));
-        onSnapshot(q, (snapshot) => {
+        const memQuery = query(collection(db, "members"), where("email", "==", currentUser.email), limit(1));
+        onSnapshot(memQuery, (snapshot) => {
             if (!snapshot.empty) {
                 const docSnap = snapshot.docs[0];
                 libraryData.member = { id: docSnap.id, ...docSnap.data() };
