@@ -223,8 +223,15 @@
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
 </head>
@@ -385,8 +392,7 @@
     </div>
 
     <!-- Admin dashboard container (hidden by default) -->
-    <div id="admin-app"
-        style="display: none; height: 100dvh; flex-direction: column;">
+    <div id="admin-app" style="display: none; height: 100dvh; flex-direction: column;">
         <main id="app-content" style="flex-grow:1; position: relative;">
             <!-- Sheet Sync Progress Indicator (Global) -->
             <div id="sync-progress-container" class="glass"
@@ -437,7 +443,8 @@
 
                 <!-- Subview: History -->
                 <div id="subview-history" class="sub-view-container" style="display: none;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
                         <h2 class="view-title" style="margin: 0;">Borrowing History</h2>
                         <button class="btn glass"
                             style="padding: 8px 12px; font-size: 12px; color: var(--primary-color); font-weight: 700; border-radius: 8px;"
@@ -456,7 +463,8 @@
                         <div class="footer-grid">
                             <div class="footer-col footer-brand">
                                 <span class="footer-logo">Nayodayam Admin</span>
-                                <p class="footer-tagline">Librarian management portal. Empowering rural communities through organized knowledge access.</p>
+                                <p class="footer-tagline">Librarian management portal. Empowering rural communities
+                                    through organized knowledge access.</p>
                                 <div class="footer-socials">
                                     <a href="https://github.com/arshinmrelju/Navodaya-Library" target="_blank"
                                         class="footer-github-link" title="View on GitHub">
@@ -468,9 +476,15 @@
                             <div class="footer-col footer-links">
                                 <h4>Quick Links</h4>
                                 <ul>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'requests-view\']').click()">Requests</a></li>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'inventory-view\']').click()">Inventory</a></li>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'members-view\']').click()">Members</a></li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'requests-view\']').click()">Requests</a>
+                                    </li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'inventory-view\']').click()">Inventory</a>
+                                    </li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'members-view\']').click()">Members</a>
+                                    </li>
                                     <li><a href="index.html">Public Site</a></li>
                                 </ul>
                             </div>
@@ -609,7 +623,8 @@
                         <div class="footer-grid">
                             <div class="footer-col footer-brand">
                                 <span class="footer-logo">Nayodayam Admin</span>
-                                <p class="footer-tagline">Librarian management portal. Empowering rural communities through organized knowledge access.</p>
+                                <p class="footer-tagline">Librarian management portal. Empowering rural communities
+                                    through organized knowledge access.</p>
                                 <div class="footer-socials">
                                     <a href="https://github.com/arshinmrelju/Navodaya-Library" target="_blank"
                                         class="footer-github-link" title="View on GitHub">
@@ -621,9 +636,15 @@
                             <div class="footer-col footer-links">
                                 <h4>Quick Links</h4>
                                 <ul>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'requests-view\']').click()">Requests</a></li>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'inventory-view\']').click()">Inventory</a></li>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'members-view\']').click()">Members</a></li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'requests-view\']').click()">Requests</a>
+                                    </li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'inventory-view\']').click()">Inventory</a>
+                                    </li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'members-view\']').click()">Members</a>
+                                    </li>
                                     <li><a href="index.html">Public Site</a></li>
                                 </ul>
                             </div>
@@ -648,28 +669,40 @@
 
             <!-- Members View -->
             <section id="members-view" class="view">
-                <h2 class="view-title">Membership Applications</h2>
-                <div id="pending-members-list" class="book-list"></div>
-
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 24px;">
-                    <h2 class="view-title" style="margin: 0;">Approved Members</h2>
-                    <button class="btn glass"
-                        style="padding: 8px 12px; font-size: 12px; color: var(--primary-color); font-weight: 700; border-radius: 8px;"
-                        onclick="printMemberList()">
-                        <svg class="lucide"
-                            style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;">
-                            <use href="#icon-clipboard-list" />
-                        </svg> Print List
-                    </button>
+                <div class="sub-nav-container" id="members-sub-nav">
+                    <button class="sub-nav-chip active" data-sub="members-pending">Pending</button>
+                    <button class="sub-nav-chip" data-sub="members-approved">Members</button>
                 </div>
-                <div id="approved-members-list" class="book-list"></div>
-                <div id="members-pagination" style="margin-top: 16px;"></div>
+
+                <!-- Subview: Pending Members -->
+                <div id="subview-members-pending" class="sub-view-container">
+                    <h2 class="view-title">Membership Applications</h2>
+                    <div id="pending-members-list" class="book-list"></div>
+                </div>
+
+                <!-- Subview: Approved Members -->
+                <div id="subview-members-approved" class="sub-view-container" style="display: none;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px;">
+                        <h2 class="view-title" style="margin: 0;">Approved Members</h2>
+                        <button class="btn glass"
+                            style="padding: 8px 12px; font-size: 12px; color: var(--primary-color); font-weight: 700; border-radius: 8px;"
+                            onclick="printMemberList()">
+                            <svg class="lucide"
+                                style="width: 16px; height: 16px; vertical-align: middle; margin-right: 4px;">
+                                <use href="#icon-clipboard-list" />
+                            </svg> Print List
+                        </button>
+                    </div>
+                    <div id="approved-members-list" class="book-list"></div>
+                    <div id="members-pagination" style="margin-top: 16px;"></div>
+                </div>
                 <footer class="app-footer">
                     <div class="footer-container">
                         <div class="footer-grid">
                             <div class="footer-col footer-brand">
                                 <span class="footer-logo">Nayodayam Admin</span>
-                                <p class="footer-tagline">Librarian management portal. Empowering rural communities through organized knowledge access.</p>
+                                <p class="footer-tagline">Librarian management portal. Empowering rural communities
+                                    through organized knowledge access.</p>
                                 <div class="footer-socials">
                                     <a href="https://github.com/arshinmrelju/Navodaya-Library" target="_blank"
                                         class="footer-github-link" title="View on GitHub">
@@ -681,9 +714,15 @@
                             <div class="footer-col footer-links">
                                 <h4>Quick Links</h4>
                                 <ul>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'requests-view\']').click()">Requests</a></li>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'inventory-view\']').click()">Inventory</a></li>
-                                    <li><a href="#" onclick="document.querySelector('[data-target=\'members-view\']').click()">Members</a></li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'requests-view\']').click()">Requests</a>
+                                    </li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'inventory-view\']').click()">Inventory</a>
+                                    </li>
+                                    <li><a href="#"
+                                            onclick="document.querySelector('[data-target=\'members-view\']').click()">Members</a>
+                                    </li>
                                     <li><a href="index.html">Public Site</a></li>
                                 </ul>
                             </div>

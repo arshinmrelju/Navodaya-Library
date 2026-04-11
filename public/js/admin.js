@@ -1,16 +1,16 @@
 import { db, auth, googleProvider } from './firebase-config.js';
-import { 
-    onAuthStateChanged, 
-    signInWithPopup, 
-    signOut 
+import {
+    onAuthStateChanged,
+    signInWithPopup,
+    signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
-import { 
-    collection, 
-    onSnapshot, 
-    doc, 
-    addDoc, 
-    updateDoc, 
-    deleteDoc, 
+import {
+    collection,
+    onSnapshot,
+    doc,
+    addDoc,
+    updateDoc,
+    deleteDoc,
     serverTimestamp,
     orderBy,
     limit,
@@ -24,6 +24,7 @@ import {
 
 let currentView = 'requests-view';
 let currentRequestSubView = 'requests';
+let currentMembersSubView = 'members-pending';
 let adminCategoryFilter = 'All';
 const views = document.querySelectorAll('.view');
 const navItems = document.querySelectorAll('.nav-item');
@@ -153,10 +154,10 @@ function setupListeners() {
         filterContainer.addEventListener('click', (e) => {
             const chip = e.target.closest('.filter-chip');
             if (!chip) return;
-            
+
             filterContainer.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
             chip.classList.add('active');
-            
+
             adminCategoryFilter = chip.dataset.category;
             resetPagination();
             fetchBooksBatch();
@@ -169,9 +170,21 @@ function setupListeners() {
         requestsSubNav.addEventListener('click', (e) => {
             const chip = e.target.closest('.sub-nav-chip');
             if (!chip) return;
-            
+
             const targetSub = chip.dataset.sub;
             switchRequestSubView(targetSub);
+        });
+    }
+
+    // Members View Sub-Navigation
+    const membersSubNav = document.getElementById('members-sub-nav');
+    if (membersSubNav) {
+        membersSubNav.addEventListener('click', (e) => {
+            const chip = e.target.closest('.sub-nav-chip');
+            if (!chip) return;
+
+            const targetSub = chip.dataset.sub;
+            switchMembersSubView(targetSub);
         });
     }
 }
@@ -183,7 +196,7 @@ function setupDataListeners() {
         const pendings = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-            
+
         const others = libraryData.requests.filter(r => r.status !== 'pending');
         libraryData.requests = [...pendings, ...others];
         if (currentView === 'requests-view') renderRequests();
@@ -240,25 +253,25 @@ function setupSyncProgress() {
             }
             return;
         }
-        
+
         const data = snapshot.data();
         console.log("Sync data received:", data);
-        
+
         const synced = parseInt(data.synced_books) || 0;
         const total = parseInt(data.total_books) || 0;
         const left = Math.max(0, total - synced);
-        
+
         if (container) {
             // Only show if we have the 3-tap secret
             if (syncClickCount >= 3) {
                 container.style.display = 'block';
             }
-            
+
             if (total > 0) {
                 const percent = Math.min(100, Math.floor((synced / total) * 100));
                 if (bar) bar.style.width = `${percent}%`;
                 if (percentDiv) percentDiv.textContent = `${percent}%`;
-                
+
                 if (percent < 100) {
                     if (text) text.innerHTML = `<span style="color:var(--primary-color)">${synced.toLocaleString()}</span> synced | <span style="color:var(--danger-color)">${left.toLocaleString()}</span> left`;
                     if (msg) msg.textContent = `Syncing from Google Sheets... Last activity: ${data.last_run ? new Date(data.last_run).toLocaleTimeString() : 'Just now'}`;
@@ -294,11 +307,13 @@ function navigateTo(viewId) {
     currentView = viewId;
 
     if (viewId === 'requests-view') {
+        switchRequestSubView(currentRequestSubView);
         renderRequests();
         renderBorrows();
     } else if (viewId === 'inventory-view') {
         renderInventory();
     } else if (viewId === 'members-view') {
+        switchMembersSubView(currentMembersSubView);
         renderMembers();
     }
 }
@@ -324,7 +339,7 @@ function renderRequests() {
         card.innerHTML = `
             <div class="req-header">
                 <span class="req-user">${req.userName}</span>
-                <span>${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : '...'}</span>
+                <span>${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}</span>
             </div>
             <div class="req-info" style="margin-bottom:20px;">
                 <div class="book-img-placeholder" style="width:50px; height:70px;"><i data-lucide="book" style="width:24px; height:24px;"></i></div>
@@ -361,10 +376,10 @@ function renderBorrows() {
     const pagination = document.getElementById('borrows-pagination');
     const historyList = document.getElementById('history-list');
     const historyPagination = document.getElementById('borrows-pagination'); // Using same pagination container for now, placed at bottom
-    
+
     list.innerHTML = '';
-    if(historyList) historyList.innerHTML = '';
-    
+    if (historyList) historyList.innerHTML = '';
+
     const activeBorrows = libraryData.requests.filter(r => r.status === 'borrowed');
     const historyBorrows = libraryData.requests.filter(r => r.status === 'returned');
 
@@ -373,7 +388,7 @@ function renderBorrows() {
     }
 
     if (historyBorrows.length === 0 && !libraryData.isBorrowsLoading) {
-        if(historyList) historyList.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">No history found.</p>';
+        if (historyList) historyList.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">No history found.</p>';
     }
 
     activeBorrows.forEach(req => {
@@ -427,7 +442,7 @@ function renderBorrows() {
 
     // Render Load More button at the bottom of history
     if (libraryData.borrowsHasMore) {
-        if(historyPagination) {
+        if (historyPagination) {
             historyPagination.innerHTML = `
                 <button class="btn btn-load-more w-100" id="load-more-borrows" ${libraryData.isBorrowsLoading ? 'disabled' : ''}>
                     ${libraryData.isBorrowsLoading ? '<span class="spinner-small"></span> Loading...' : '<i data-lucide="plus-circle"></i> Load More History'}
@@ -436,7 +451,7 @@ function renderBorrows() {
             historyPagination.querySelector('#load-more-borrows').onclick = fetchBorrowsBatch;
         }
     } else {
-        if(historyPagination) {
+        if (historyPagination) {
             historyPagination.innerHTML = libraryData.requests.length > 0 ? '<p style="text-align:center; color:var(--text-muted); font-size:12px; margin:20px 0;">End of history.</p>' : '';
         }
     }
@@ -446,16 +461,16 @@ function renderBorrows() {
 
 async function fetchBorrowsBatch() {
     if (libraryData.isBorrowsLoading || !libraryData.borrowsHasMore) return;
-    
+
     libraryData.isBorrowsLoading = true;
     renderBorrows();
 
     const batchSize = 10;
     try {
         let q = query(
-            collection(db, "requests"), 
+            collection(db, "requests"),
             where("status", "in", ["borrowed", "returned"]),
-            orderBy("timestamp", "desc"), 
+            orderBy("timestamp", "desc"),
             limit(batchSize)
         );
 
@@ -464,7 +479,7 @@ async function fetchBorrowsBatch() {
         }
 
         const snapshot = await getDocs(q);
-        
+
         if (snapshot.empty) {
             libraryData.borrowsHasMore = false;
         } else {
@@ -493,7 +508,7 @@ function renderMembers() {
     const approvedList = document.getElementById('approved-members-list');
     const pagination = document.getElementById('members-pagination');
     if (!pendingList || !approvedList) return;
-    
+
     pendingList.innerHTML = '';
     approvedList.innerHTML = '';
 
@@ -506,7 +521,7 @@ function renderMembers() {
         const idB = parseInt(b.memberId || 0);
         return idA - idB;
     };
-    
+
     pendings.sort(sortById);
     approved.sort(sortById);
 
@@ -534,7 +549,7 @@ function renderMembers() {
                 </div>
             `;
             pendingList.appendChild(card);
-            
+
             // Attach event listeners via JS for reliable scoping
             card.querySelector(`#approve-mem-${m.id}`).onclick = (e) => {
                 e.stopPropagation();
@@ -544,7 +559,7 @@ function renderMembers() {
                 e.stopPropagation();
                 window.rejectMember(m.id);
             };
-            
+
             card.onclick = (e) => {
                 if (!e.target.closest('button')) showMemberDetail(m.id);
             };
@@ -594,14 +609,14 @@ function renderMembers() {
 
 async function fetchMembersBatch() {
     if (libraryData.isMembersLoading || !libraryData.membersHasMore) return;
-    
+
     libraryData.isMembersLoading = true;
     renderMembers();
 
     const batchSize = 500;
     try {
         let q = query(
-            collection(db, "members"), 
+            collection(db, "members"),
             where("status", "==", "approved"),
             limit(batchSize)
         );
@@ -611,7 +626,7 @@ async function fetchMembersBatch() {
         }
 
         const snapshot = await getDocs(q);
-        
+
         if (snapshot.empty) {
             libraryData.membersHasMore = false;
         } else {
@@ -634,14 +649,14 @@ async function fetchMembersBatch() {
     }
 }
 
-window.showMemberDetail = function(memberId) {
+window.showMemberDetail = function (memberId) {
     const m = libraryData.members.find(mem => mem.id === memberId);
     if (!m) return;
 
     const modal = document.getElementById('member-detail-modal');
     const content = document.getElementById('member-detail-content');
 
-    const statusBadge = m.status === 'approved' 
+    const statusBadge = m.status === 'approved'
         ? '<span style="background:#ecfdf5; color:#059669; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase;">Active Member</span>'
         : '<span style="background:#fff7ed; color:#9a3412; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase;">Pending Approval</span>';
 
@@ -651,7 +666,7 @@ window.showMemberDetail = function(memberId) {
         const memberIdMatch = Boolean(m.memberId && m.memberId !== "" && m.memberId !== "N/A" && req.memberId && req.memberId.toString() === m.memberId.toString());
         return emailMatch || uidMatch || memberIdMatch;
     }) : [];
-    memberRequests.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+    memberRequests.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
     let historyHtml = '<div style="margin-top: 32px; border-top: 1px solid var(--border-color); padding-top: 24px;"><h3 style="font-size: 16px; font-weight: 800; color: var(--text-primary); margin-bottom: 16px;"><i data-lucide="history" style="width:18px; height:18px; margin-right:8px; vertical-align:middle; display:inline-block;"></i>Borrowing History</h3>';
     if (memberRequests.length === 0) {
@@ -659,7 +674,7 @@ window.showMemberDetail = function(memberId) {
     } else {
         memberRequests.forEach(req => {
             const reqDate = req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
-            
+
             let statusColor = '#94a3b8';
             let statusBg = '#f1f5f9';
             let statusText = req.status;
@@ -794,7 +809,7 @@ window.showMemberDetail = function(memberId) {
     lucide.createIcons();
 };
 
-window.printMemberCard = function(memberId) {
+window.printMemberCard = function (memberId) {
     const m = libraryData.members.find(mem => mem.id === memberId);
     if (!m) return;
 
@@ -840,28 +855,28 @@ window.printMemberCard = function(memberId) {
     }, 100);
 };
 
-window.closeMemberDetail = function() {
+window.closeMemberDetail = function () {
     document.getElementById('member-detail-modal').style.display = 'none';
 };
 
-window.handleApproveFromDetail = async function(id) {
+window.handleApproveFromDetail = async function (id) {
     await window.approveMember(id);
     closeMemberDetail();
 };
 
-window.handleRejectFromDetail = async function(id) {
+window.handleRejectFromDetail = async function (id) {
     await window.rejectMember(id);
     closeMemberDetail();
 };
 
-window.approveMember = async function(id) {
+window.approveMember = async function (id) {
     try {
         // Fetch current max ID to generate next sequential ID
         // Note: In a high-concurrency environment, a transaction would be better
         const q = query(collection(db, "members"), orderBy("memberId", "desc"), limit(1));
         const snap = await getDocs(q);
         let nextId = 1;
-        
+
         if (!snap.empty) {
             const lastMemberId = snap.docs[0].data().memberId;
             if (lastMemberId && !isNaN(lastMemberId)) {
@@ -872,12 +887,12 @@ window.approveMember = async function(id) {
         const newDocId = `MEM_${nextId}`;
         const newDocRef = doc(db, "members", newDocId);
         const oldDocRef = doc(db, "members", id);
-        
+
         const oldDocSnap = await getDoc(oldDocRef);
         if (!oldDocSnap.exists()) {
             throw new Error("Pending member document not found.");
         }
-        
+
         const memberData = oldDocSnap.data();
 
         const newMemberData = {
@@ -898,22 +913,22 @@ window.approveMember = async function(id) {
         await deleteDoc(oldDocRef);
 
         showAlertModal(`Member approved successfully! Assigned ID: ${nextId}`, "Success");
-    } catch(e) {
+    } catch (e) {
         console.error("Error approving:", e);
         showAlertModal("Failed to approve member. Check console for details.", "Error");
     }
 };
 
-window.rejectMember = async function(id) {
+window.rejectMember = async function (id) {
     if (confirm("Reject this application?")) {
         try {
             // Update local cache instantly
             libraryData.members = libraryData.members.filter(m => m.id !== id);
             if (currentView === 'members-view') renderMembers();
-            
+
             await deleteDoc(doc(db, "members", id));
             showAlertModal("Application rejected and removed.", "Success");
-        } catch(e) {
+        } catch (e) {
             console.error(e);
             showAlertModal("Failed to reject member.", "Error");
         }
@@ -937,12 +952,12 @@ async function updateRequestStatus(reqId, newStatus, bookId) {
         } else {
             await updateDoc(doc(db, "requests", reqId), { status: newStatus });
         }
-        
+
         // If borrowed, mark book unavailable. If returned/rejected, mark available.
         const available = (newStatus !== 'borrowed');
         if (newStatus === 'borrowed' || newStatus === 'returned' || newStatus === 'rejected') {
             await updateDoc(doc(db, "books", bookId), { available: available });
-            
+
             // Update book locally
             const bookIdx = libraryData.books.findIndex(b => b.id === bookId);
             if (bookIdx !== -1) {
@@ -973,7 +988,7 @@ function renderInventory() {
     filteredBooks.forEach(book => {
         const category = book.category || book.section || 'N/A';
         const shelf = book.shelf_number || book.shelf || 'N/A';
-        
+
         const card = document.createElement('div');
         card.className = 'book-card';
         card.style.alignItems = 'center';
@@ -994,7 +1009,7 @@ function renderInventory() {
                     ${book.available !== false ? 'Available' : 'Unavailable'}
                 </span>
             </div>
-            <div style="display:flex; gap:8px; margin-left: auto;">
+            <div style="display:flex; gap:8px; margin-left: auto; flex-shrink: 0;">
                 <button class="edit-book-btn" id="edit-${book.id}" title="Edit"><i data-lucide="edit"></i></button>
                 <button class="delete-book-btn" id="delete-${book.id}" title="Delete"><i data-lucide="trash-2"></i></button>
             </div>
@@ -1010,7 +1025,7 @@ function renderInventory() {
         loadMoreBtn.className = 'btn btn-load-more w-100';
         loadMoreBtn.style.marginTop = '20px';
         loadMoreBtn.style.marginBottom = '20px';
-        
+
         if (libraryData.isNextPageLoading) {
             loadMoreBtn.innerHTML = '<span class="spinner-small"></span> Loading...';
             loadMoreBtn.disabled = true;
@@ -1018,7 +1033,7 @@ function renderInventory() {
             loadMoreBtn.innerHTML = '<i data-lucide="plus-circle"></i> Load More Books';
             loadMoreBtn.onclick = window.loadMoreBooks;
         }
-        
+
         list.appendChild(loadMoreBtn);
     } else if (libraryData.books.length > 0) {
         const endMessage = document.createElement('p');
@@ -1032,28 +1047,28 @@ function renderInventory() {
     lucide.createIcons();
 }
 
-window.resetPagination = function() {
+window.resetPagination = function () {
     libraryData.books = [];
     libraryData.lastVisible = null;
     libraryData.hasMore = true;
     libraryData.isLoading = true;
 };
 
-window.fetchBooksBatch = async function() {
+window.fetchBooksBatch = async function () {
     const batchSize = 10;
     try {
         let q;
         if (adminCategoryFilter === 'All') {
             q = query(
-                collection(db, "books"), 
-                orderBy("last_updated", "desc"), 
+                collection(db, "books"),
+                orderBy("last_updated", "desc"),
                 limit(batchSize)
             );
         } else {
             q = query(
-                collection(db, "books"), 
-                where("category", "==", adminCategoryFilter), 
-                orderBy("last_updated", "desc"), 
+                collection(db, "books"),
+                where("category", "==", adminCategoryFilter),
+                orderBy("last_updated", "desc"),
                 limit(batchSize)
             );
         }
@@ -1063,14 +1078,14 @@ window.fetchBooksBatch = async function() {
         }
 
         const snapshot = await getDocs(q);
-        
+
         if (snapshot.empty) {
             libraryData.hasMore = false;
         } else {
             const newBooks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             libraryData.books = [...libraryData.books, ...newBooks];
             libraryData.lastVisible = snapshot.docs[snapshot.docs.length - 1];
-            
+
             if (snapshot.docs.length < batchSize) {
                 libraryData.hasMore = false;
             }
@@ -1087,7 +1102,7 @@ window.fetchBooksBatch = async function() {
     }
 };
 
-window.loadMoreBooks = function() {
+window.loadMoreBooks = function () {
     if (libraryData.isNextPageLoading || !libraryData.hasMore) return;
     libraryData.isNextPageLoading = true;
     renderInventory();
@@ -1118,7 +1133,7 @@ window.openBookForm = function (bookId = null) {
             langField.value = book.language || '2';
             shelfField.value = book.shelf_number || '';
             rowField.value = book.row || '';
-            
+
             // Set checkboxes (supports single or multiple if saved as array/comma string)
             const bookCat = book.category || book.section || '';
             checkboxes.forEach(cb => {
@@ -1143,7 +1158,7 @@ window.closeBookForm = function () {
 
 window.saveBook = async function () {
     const editId = document.getElementById('edit-book-id').value;
-    
+
     // Get selected categories
     const selectedCats = Array.from(document.querySelectorAll('input[name="category"]:checked'))
         .map(cb => cb.value);
@@ -1211,7 +1226,7 @@ async function deleteBook(id) {
     }
 }
 
-window.printMemberList = function() {
+window.printMemberList = function () {
     const list = libraryData.members.filter(m => m.status === 'approved');
     if (list.length === 0) {
         showAlertModal("No approved members to print.", "Notice");
@@ -1226,7 +1241,7 @@ window.printMemberList = function() {
     });
 
     const printArea = document.getElementById('printable-card-area');
-    
+
     let rowsHtml = '';
     list.forEach((m, index) => {
         const dateStr = m.timestamp ? new Date(m.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
@@ -1292,11 +1307,11 @@ window.printMemberList = function() {
 let html5QrCode = null;
 let currentScanContext = null;
 
-window.openScanner = function(requestId, expectedMemberId, bookId) {
+window.openScanner = function (requestId, expectedMemberId, bookId) {
     currentScanContext = { requestId, expectedMemberId, bookId };
     const modal = document.getElementById('scanner-modal');
     modal.style.display = 'flex';
-    
+
     document.getElementById('scanner-msg').textContent = `Please scan the Membership Card of the user. Expected ID: ${expectedMemberId || 'Unknown'}`;
     document.getElementById('force-approve-btn').style.display = 'none';
 
@@ -1305,15 +1320,15 @@ window.openScanner = function(requestId, expectedMemberId, bookId) {
     }
 
     // Optimization: Increased FPS and refined scan box for better detection
-    const config = { 
-        fps: 25, 
-        qrbox: { width: 320, height: 200 }, 
+    const config = {
+        fps: 25,
+        qrbox: { width: 320, height: 200 },
         aspectRatio: 1.0,
         showTorchButtonIfSupported: true
     };
 
     html5QrCode.start(
-        { facingMode: "environment" }, 
+        { facingMode: "environment" },
         config,
         (decodedText) => onScanSuccess(decodedText)
     ).catch(err => {
@@ -1323,7 +1338,7 @@ window.openScanner = function(requestId, expectedMemberId, bookId) {
     });
 };
 
-window.closeScanner = function() {
+window.closeScanner = function () {
     const modal = document.getElementById('scanner-modal');
     modal.style.display = 'none';
     if (html5QrCode && html5QrCode.isScanning) {
@@ -1334,13 +1349,13 @@ window.closeScanner = function() {
 
 async function onScanSuccess(decodedText) {
     if (!currentScanContext) return;
-    
+
     const { requestId, expectedMemberId, bookId } = currentScanContext;
-    
+
     // Normalize comparison: trim and remove non-printable/control characters
     // This prevents "NYD 2" type garbled output by stripping noise
     const scannedId = decodedText.replace(/[^\x20-\x7E]/g, "").trim();
-    
+
     if (scannedId === expectedMemberId) {
         // Success match
         await html5QrCode.stop();
@@ -1359,7 +1374,7 @@ async function onScanSuccess(decodedText) {
     }
 }
 
-window.forceApprove = async function() {
+window.forceApprove = async function () {
     if (confirm("Are you sure you want to approve this loan WITHOUT a successful ID scan?")) {
         const { requestId, bookId } = currentScanContext;
         updateRequestStatus(requestId, 'borrowed', bookId);
@@ -1368,7 +1383,7 @@ window.forceApprove = async function() {
     }
 };
 
-window.downloadHistoryPDF = function() {
+window.downloadHistoryPDF = function () {
     const list = libraryData.requests.filter(r => r.status === 'returned');
     if (list.length === 0) {
         showAlertModal("No history available to download.", "Notice");
@@ -1376,10 +1391,10 @@ window.downloadHistoryPDF = function() {
     }
 
     // Sort by most recent
-    list.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+    list.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
     const printArea = document.getElementById('printable-card-area');
-    
+
     let rowsHtml = '';
     list.forEach((r, index) => {
         const dateStr = r.timestamp ? new Date(r.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
@@ -1441,7 +1456,7 @@ window.downloadHistoryPDF = function() {
     }, 100);
 };
 
-window.deleteHistoryRecord = async function(id) {
+window.deleteHistoryRecord = async function (id) {
     if (confirm("Are you sure you want to delete this history record? This action cannot be undone.")) {
         try {
             await deleteDoc(doc(db, "requests", id));
@@ -1449,7 +1464,7 @@ window.deleteHistoryRecord = async function(id) {
             libraryData.requests = libraryData.requests.filter(r => r.id !== id);
             renderBorrows();
             showAlertModal("History record deleted.", "Success");
-        } catch(e) {
+        } catch (e) {
             console.error("Error deleting history record: ", e);
             showAlertModal("Failed to delete record.", "Error");
         }
@@ -1458,17 +1473,34 @@ window.deleteHistoryRecord = async function(id) {
 
 function switchRequestSubView(sub) {
     currentRequestSubView = sub;
-    const chips = document.querySelectorAll('.sub-nav-chip');
-    const subviews = document.querySelectorAll('.sub-view-container');
-    
+    const chips = document.querySelectorAll('#requests-sub-nav .sub-nav-chip');
+    const subviews = document.querySelectorAll('#requests-view .sub-view-container');
+
     chips.forEach(c => {
         if (c.dataset.sub === sub) c.classList.add('active');
         else c.classList.remove('active');
     });
-    
+
     subviews.forEach(v => {
         if (v.id === `subview-${sub}`) v.style.display = 'block';
         else v.style.display = 'none';
     });
 }
 window.switchRequestSubView = switchRequestSubView;
+
+function switchMembersSubView(sub) {
+    currentMembersSubView = sub;
+    const chips = document.querySelectorAll('#members-sub-nav .sub-nav-chip');
+    const subviews = document.querySelectorAll('#members-view .sub-view-container');
+
+    chips.forEach(c => {
+        if (c.dataset.sub === sub) c.classList.add('active');
+        else c.classList.remove('active');
+    });
+
+    subviews.forEach(v => {
+        if (v.id === `subview-${sub}`) v.style.display = 'block';
+        else v.style.display = 'none';
+    });
+}
+window.switchMembersSubView = switchMembersSubView;

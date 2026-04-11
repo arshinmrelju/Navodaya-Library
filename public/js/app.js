@@ -22,6 +22,7 @@ import {
 
 let currentUser = null;
 let currentView = 'welcome-view';
+let lastView = 'welcome-view';
 let pendingRequestBookId = null;
 
 const LANGUAGE_MAP = {
@@ -106,7 +107,7 @@ function setupFirestoreListeners() {
             } else {
                 libraryData.member = null;
             }
-            
+
             if (pendingRequestBookId) {
                 const bookId = pendingRequestBookId;
                 pendingRequestBookId = null;
@@ -119,7 +120,7 @@ function setupFirestoreListeners() {
                     processRequestBook(bookId);
                 }
             }
-            
+
             if (currentView === 'membership-view') renderMembershipView();
         });
     } else {
@@ -143,16 +144,16 @@ function setupEventListeners() {
         const term = e.target.value;
         if (term.length > 2) {
             // Reset pagination for search
-            libraryData.hasMore = false; 
+            libraryData.hasMore = false;
             // Perform server-side prefix search for performance
             const q = query(
-                collection(db, "books"), 
-                where("title", ">=", term), 
+                collection(db, "books"),
+                where("title", ">=", term),
                 where("title", "<=", term + '\uf8ff'),
                 limit(50)
             );
             const snapshot = await getDocs(q);
-            const results = snapshot.docs.map(d => ({id: d.id, ...d.data()}));
+            const results = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             renderLibraryView(term, results);
         } else {
             // Restore from libraryData.books if search is cleared
@@ -167,8 +168,13 @@ function setupEventListeners() {
     });
 
     document.getElementById('back-to-library').addEventListener('click', () => {
-        navigateTo('library-view');
-        updateNavActive('library-view');
+        if (lastView === 'my-books-view') {
+            navigateTo('my-books-view');
+            updateNavActive('my-books-view');
+        } else {
+            navigateTo('library-view');
+            updateNavActive('library-view');
+        }
     });
 
     document.getElementById('google-signin-btn').addEventListener('click', async () => {
@@ -183,17 +189,20 @@ function setupEventListeners() {
 }
 
 function navigateTo(viewId, action = null) {
+    if (viewId !== 'book-detail-view' && viewId !== currentView) {
+        lastView = currentView;
+    }
     views.forEach(view => view.classList.remove('active-view'));
     const target = document.getElementById(viewId);
     if (target) {
         target.classList.add('active-view');
-        
+
         // Reset scroll for detail views or primary entry views
         if (viewId === 'book-detail-view' || viewId === 'welcome-view' || action === 'reset-scroll') {
             target.scrollTop = 0;
         }
     }
-    
+
     currentView = viewId;
 
     const header = document.getElementById('app-header');
@@ -350,7 +359,7 @@ function renderLibraryView(searchQuery = '', serverResults = null) {
         loadMoreBtn.className = 'btn btn-load-more w-100';
         loadMoreBtn.style.marginTop = '20px';
         loadMoreBtn.style.marginBottom = '20px';
-        
+
         if (libraryData.isNextPageLoading) {
             loadMoreBtn.innerHTML = '<span class="spinner-small"></span> Loading...';
             loadMoreBtn.disabled = true;
@@ -358,7 +367,7 @@ function renderLibraryView(searchQuery = '', serverResults = null) {
             loadMoreBtn.innerHTML = '<i data-lucide="plus-circle"></i> Load More Books';
             loadMoreBtn.onclick = loadMoreBooks;
         }
-        
+
         listContainer.appendChild(loadMoreBtn);
     } else if (!libraryData.hasMore && libraryData.books.length > 0 && !searchQuery) {
         const endMessage = document.createElement('p');
@@ -377,11 +386,24 @@ function showBookDetail(book, myRequest) {
     const container = document.getElementById('book-detail-content');
 
     let actionBtnHtml = '';
+    let statusGuidance = '';
+
     if (myRequest) {
         if (myRequest.status === 'pending') {
             actionBtnHtml = `<button class="btn btn-primary w-100" style="background-color:#fb8c00;" disabled>Request is Pending</button>`;
+            statusGuidance = `<p style="margin-top:12px; font-size:13px; color:var(--text-secondary); text-align:center;">Librarian is currently reviewing your request. Please wait for approval.</p>`;
         } else if (myRequest.status === 'borrowed') {
-            actionBtnHtml = `<button class="btn btn-primary w-100" style="background-color:#4caf50;" disabled>You Borrowed This</button>`;
+            actionBtnHtml = `<button class="btn btn-primary w-100" style="background-color:#4caf50;" disabled>Currently Borrowed</button>`;
+            statusGuidance = `<div class="glass" style="margin-top:16px; padding:16px; border-radius:12px; border:1px solid #4caf5050;">
+                <p style="font-size:12px; font-weight:800; color:#2e7d32; text-transform:uppercase; margin-bottom:4px; display:flex; align-items:center; gap:6px;"><i data-lucide="info" style="width:14px;"></i> Return Guidance</p>
+                <p style="font-size:13px; color:var(--text-secondary); margin:0;">Please return this copy to <strong>Shelf ${book.section || book.category || 'N/A'} - Row ${book.row || 'N/A'}</strong> when you are finished reading.</p>
+            </div>`;
+        } else if (myRequest.status === 'returned') {
+            actionBtnHtml = `<button class="btn btn-primary w-100" style="background-color:var(--primary-color);" disabled>Completed</button>`;
+            statusGuidance = `<p style="margin-top:12px; font-size:13px; color:var(--text-secondary); text-align:center;">You have successfully returned this book. Thank you!</p>`;
+        } else if (myRequest.status === 'rejected') {
+            actionBtnHtml = `<button class="btn btn-primary w-100" style="background-color:var(--danger-color);" disabled>Request Rejected</button>`;
+            statusGuidance = `<p style="margin-top:12px; font-size:13px; color:var(--danger-color); text-align:center;">Unfortunately, this request was not approved.</p>`;
         }
     } else if (book.available !== false) {
         actionBtnHtml = `<button class="btn btn-primary w-100" id="req-btn-${book.id}">Request Book</button>`;
@@ -419,9 +441,10 @@ function showBookDetail(book, myRequest) {
             </div>
         </div>
 
-        <p class="detail-desc">This copy (${book.call_number || 'N/A'}) is kept in the ${section} section. Use our digital map to locate the exact shelf.</p>
+        <p class="detail-desc">Shelf ${shelf}, Row ${book.row || 'N/A'}. This copy is kept in the ${section} section. Use our digital map to locate the exact shelf.</p>
         <div class="detail-actions">
             ${actionBtnHtml}
+            ${statusGuidance}
         </div>
     `;
 
@@ -434,7 +457,7 @@ function showBookDetail(book, myRequest) {
     lucide.createIcons();
 }
 
-window.resetPagination = function() {
+window.resetPagination = function () {
     libraryData.books = [];
     libraryData.lastVisible = null;
     libraryData.hasMore = true;
@@ -442,21 +465,21 @@ window.resetPagination = function() {
     libraryData.errorMessage = null;
 };
 
-window.fetchBooksBatch = async function() {
+window.fetchBooksBatch = async function () {
     const batchSize = 10;
     try {
         let q;
         if (libraryData.currentGenre === 'All') {
             q = query(
-                collection(db, "books"), 
-                orderBy("last_updated", "desc"), 
+                collection(db, "books"),
+                orderBy("last_updated", "desc"),
                 limit(batchSize)
             );
         } else {
             q = query(
-                collection(db, "books"), 
-                where("category", "==", libraryData.currentGenre), 
-                orderBy("last_updated", "desc"), 
+                collection(db, "books"),
+                where("category", "==", libraryData.currentGenre),
+                orderBy("last_updated", "desc"),
                 limit(batchSize)
             );
         }
@@ -466,14 +489,14 @@ window.fetchBooksBatch = async function() {
         }
 
         const snapshot = await getDocs(q);
-        
+
         if (snapshot.empty) {
             libraryData.hasMore = false;
         } else {
             const newBooks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
             libraryData.books = [...libraryData.books, ...newBooks];
             libraryData.lastVisible = snapshot.docs[snapshot.docs.length - 1];
-            
+
             if (snapshot.docs.length < batchSize) {
                 libraryData.hasMore = false;
             }
@@ -490,7 +513,7 @@ window.fetchBooksBatch = async function() {
     }
 };
 
-window.loadMoreBooks = function() {
+window.loadMoreBooks = function () {
     if (libraryData.isNextPageLoading || !libraryData.hasMore) return;
     libraryData.isNextPageLoading = true;
     renderLibraryView();
@@ -544,16 +567,16 @@ window.logoutUser = async function () {
 window.navigateTo = navigateTo;
 window.updateNavActive = updateNavActive;
 
-window.selectGenre = async function(genre, icon) {
+window.selectGenre = async function (genre, icon) {
     const listTitle = document.getElementById('library-view-title');
     if (listTitle) {
         listTitle.innerHTML = `<button class="header-action" onclick="navigateTo('genre-selection-view')" style="background:none; border:none; color:inherit; padding:0; cursor:pointer;"><i data-lucide="${icon}" style="width:20px; vertical-align:middle; margin-right:8px;"></i> ${genre} Collection</button>`;
     }
-    
+
     libraryData.currentGenre = genre;
     resetPagination();
     navigateTo('library-view');
-    
+
     fetchBooksBatch();
 };
 
@@ -745,7 +768,7 @@ function renderMembershipView() {
     lucide.createIcons();
 }
 
-window.printMyCard = function() {
+window.printMyCard = function () {
     const m = libraryData.member;
     if (!m || m.status !== 'approved') return;
 
@@ -863,6 +886,17 @@ function renderMyBooksView() {
 
         const card = document.createElement('div');
         card.className = 'book-card';
+        card.style.cursor = 'pointer';
+        card.onclick = () => {
+            const fullBook = libraryData.books.find(b => b.id === req.bookId) || {
+                id: req.bookId,
+                title: req.bookTitle,
+                author: 'Member Request',
+                category: 'My Books',
+                available: false
+            };
+            showBookDetail(fullBook, req);
+        };
         card.innerHTML = `
             <div class="book-img-placeholder">
                 <i data-lucide="book" style="width:40px; height:40px; color:var(--primary-light); opacity:0.5;"></i>
