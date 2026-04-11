@@ -31,6 +31,9 @@ const navItems = document.querySelectorAll('.nav-item');
 let syncClickCount = 0;
 let lastSyncClickTime = 0;
 let selectionContext = { type: null, targetId: null }; // For direct borrow
+let voiceEnabled = localStorage.getItem('voiceEnabled') !== 'false'; // Default to true
+let isFirstRequestsLoad = true;
+let isFirstMembersLoad = true;
 
 const LANGUAGE_MAP = {
     '1': 'Malayalam',
@@ -112,7 +115,62 @@ function showApp() {
     }, { passive: true });
     setupListeners();
     setupDataListeners();
+    initVoiceFeature();
     lucide.createIcons();
+}
+
+function initVoiceFeature() {
+    const voiceBtn = document.getElementById('header-voice-btn');
+    const voiceIconUse = document.getElementById('voice-icon-use');
+
+    const updateUI = () => {
+        if (voiceIconUse) {
+            voiceIconUse.setAttribute('href', voiceEnabled ? '#icon-volume-2' : '#icon-volume-x');
+        }
+        if (voiceBtn) {
+            voiceBtn.style.color = voiceEnabled ? 'var(--primary-light)' : 'var(--text-muted)';
+            voiceBtn.style.background = voiceEnabled ? 'rgba(14, 116, 144, 0.1)' : 'var(--bg-color)';
+        }
+    };
+
+    if (voiceBtn) {
+        voiceBtn.addEventListener('click', () => {
+            voiceEnabled = !voiceEnabled;
+            localStorage.setItem('voiceEnabled', voiceEnabled);
+            updateUI();
+            if (voiceEnabled) {
+                speakNotification("Voice alerts enabled");
+            }
+        });
+    }
+
+    updateUI();
+}
+
+function speakNotification(text) {
+    if (!voiceEnabled || !window.speechSynthesis) return;
+
+    // Standard Web Speech API
+    const utterance = new SpeechSynthesisUtterance(text);
+    // 0.9 - 0.95 rate is usually clearer for Indian accents
+    utterance.rate = 0.9; 
+    utterance.pitch = 1.0;
+    utterance.volume = 1.0;
+
+    const voices = window.speechSynthesis.getVoices();
+    
+    // Targeted selection for Indian English (en-IN) to get that familiar accent
+    const indianVoice = voices.find(v => v.lang === 'en-IN' || v.name.includes('India')) ||
+                       voices.find(v => v.lang === 'en-GB'); // UK English as second fallback (clearer)
+    
+    if (indianVoice) {
+        utterance.voice = indianVoice;
+    } else {
+        const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Premium'));
+        if (preferredVoice) utterance.voice = preferredVoice;
+    }
+
+    window.speechSynthesis.speak(utterance);
 }
 
 window.logout = function () {
@@ -242,6 +300,17 @@ function setupDataListeners() {
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
 
+        // Detection for new requests
+        if (!isFirstRequestsLoad) {
+            snapshot.docChanges().forEach(change => {
+                if (change.type === "added") {
+                    const data = change.doc.data();
+                    speakNotification("Attention librarian. You have a new book request from " + (data.userName || "a member"));
+                }
+            });
+        }
+        isFirstRequestsLoad = false;
+
         const others = libraryData.requests.filter(r => r.status !== 'pending');
         libraryData.requests = [...pendings, ...others];
         if (currentView === 'requests-view') renderRequests();
@@ -260,6 +329,17 @@ function setupDataListeners() {
         const pendings = snapshot.docs
             .map(doc => ({ id: doc.id, ...doc.data() }))
             .sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+        // Detection for new members
+        if (!isFirstMembersLoad) {
+            snapshot.docChanges().forEach(change => {
+                if (change.type === "added") {
+                    const data = change.doc.data();
+                    speakNotification("Librarian alert. New membership application from " + (data.name || "a new member"));
+                }
+            });
+        }
+        isFirstMembersLoad = false;
 
         const others = libraryData.members.filter(m => m.status !== 'pending');
         libraryData.members = [...pendings, ...others];
