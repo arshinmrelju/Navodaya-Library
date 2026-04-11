@@ -328,6 +328,20 @@ function navigateTo(viewId) {
 }
 window.navigateTo = navigateTo;
 
+function resolveMemberInfo(req) {
+    const member = libraryData.members.find(m =>
+        (req.memberId && req.memberId !== 'N/A' && String(m.memberId) === String(req.memberId)) ||
+        (req.uid && m.uid === req.uid) ||
+        (req.userId && m.uid === req.userId) ||
+        (req.userEmail && req.userEmail !== 'N/A' && m.email === req.userEmail)
+    );
+    return {
+        name: member ? member.name : (req.userName || 'Unknown User'),
+        memberId: req.memberId && req.memberId !== 'N/A' ? req.memberId : (member ? member.memberId : 'N/A'),
+        member: member
+    };
+}
+
 function renderRequests() {
     const list = document.getElementById('pending-list');
     list.innerHTML = '';
@@ -339,15 +353,14 @@ function renderRequests() {
     }
 
     pendings.forEach(req => {
-        // Resolve Member ID from request or lookup from members list
-        const member = libraryData.members.find(m => m.email === req.userEmail || m.uid === req.uid);
-        const resolvedMemberId = req.memberId && req.memberId !== 'N/A' ? req.memberId : (member ? member.memberId : 'N/A');
+        // Resolve Member info
+        const { name, memberId: resolvedMemberId } = resolveMemberInfo(req);
 
         const card = document.createElement('div');
         card.className = 'book-card req-card';
         card.innerHTML = `
             <div class="req-header">
-                <span class="req-user">${req.userName}</span>
+                <span class="req-user">${name}</span>
                 <span>${req.timestamp ? new Date(req.timestamp.seconds * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '...'}</span>
             </div>
             <div class="req-info" style="margin-bottom:20px;">
@@ -401,11 +414,12 @@ function renderBorrows() {
     }
 
     activeBorrows.forEach(req => {
+        const { name } = resolveMemberInfo(req);
         const card = document.createElement('div');
         card.className = 'book-card req-card';
         card.innerHTML = `
             <div class="req-header">
-                <span><strong>${req.userName}</strong></span>
+                <span><strong>${name}</strong></span>
                 <span style="color:var(--success-color);">In Progress</span>
             </div>
             <div class="req-body">
@@ -424,6 +438,7 @@ function renderBorrows() {
 
     if (historyList) {
         historyBorrows.forEach(req => {
+            const { name } = resolveMemberInfo(req);
             const card = document.createElement('div');
             card.className = 'book-card';
             card.style.padding = '12px 16px';
@@ -435,7 +450,7 @@ function renderBorrows() {
                 <div style="flex: 1; min-width: 0;">
                     <h3 style="font-size: 14px; font-weight: 700; margin: 0 0 2px 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${req.bookTitle}</h3>
                     <div style="display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted);">
-                        <span style="font-weight: 600; color: var(--primary-light);">${req.userName}</span>
+                        <span style="font-weight: 600; color: var(--primary-light);">${name}</span>
                         <span>•</span>
                         <span>${req.userPhone || 'N/A'}</span>
                     </div>
@@ -1418,12 +1433,13 @@ window.downloadHistoryPDF = function () {
 
     let rowsHtml = '';
     list.forEach((r, index) => {
+        const { name } = resolveMemberInfo(r);
         const dateStr = r.timestamp ? new Date(r.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
         const bg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
         rowsHtml += `
             <tr style="background-color: ${bg}; border-bottom: 1px solid #f1f5f9;">
                 <td style="padding: 14px 16px; text-align: center; color: #64748b; font-weight: 600;">${index + 1}</td>
-                <td style="padding: 14px 16px; font-weight: 700; color: #0f172a; font-size: 14px;">${r.userName}</td>
+                <td style="padding: 14px 16px; font-weight: 700; color: #0f172a; font-size: 14px;">${name}</td>
                 <td style="padding: 14px 16px; font-weight: 700; color: #0f172a; font-size: 14px;">${r.bookTitle}</td>
                 <td style="padding: 14px 16px; color: #475569;">${dateStr}</td>
                 <td style="padding: 14px 16px; color: #166534; font-weight: bold;">Returned</td>

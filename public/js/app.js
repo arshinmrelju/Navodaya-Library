@@ -821,7 +821,7 @@ async function processRequestBook(bookId) {
             await addDoc(collection(db, "requests"), {
                 uid: currentUser.uid,
                 userEmail: currentUser.email,
-                userName: currentUser.name,
+                userName: libraryData.member?.name || currentUser.name,
                 userPhone: libraryData.member?.phone || 'N/A',
                 memberId: libraryData.member?.memberId || 'N/A',
                 bookId: book.id,
@@ -853,7 +853,7 @@ function renderMyBooksView() {
                 ${currentUser.photo ? `<img src="${currentUser.photo}" style="width:40px; height:40px; border-radius:50%; border:2px solid var(--primary-color); flex-shrink: 0; object-fit: cover;">` : `<div style="width:40px; height:40px; border-radius:50%; background:var(--primary-color); color:white; display:flex; align-items:center; justify-content:center; font-weight:800; flex-shrink: 0;">${currentUser.name[0]}</div>`}
                 <div>
                     <p style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--text-muted); letter-spacing:1px; margin:0;">Welcome back</p>
-                    <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${currentUser.name}</p>
+                    <p style="font-size:15px; color:var(--primary-color); font-weight:700; margin:0;">${libraryData.member?.name || currentUser.name}</p>
                 </div>
             </div>
             <button onclick="logoutUser()" class="btn" style="background:var(--danger-color); color:white; padding:8px 12px; font-size:12px; border-radius:8px;">Logout</button>
