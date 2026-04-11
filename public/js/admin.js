@@ -30,6 +30,7 @@ const views = document.querySelectorAll('.view');
 const navItems = document.querySelectorAll('.nav-item');
 let syncClickCount = 0;
 let lastSyncClickTime = 0;
+let selectionContext = { type: null, targetId: null }; // For direct borrow
 
 const LANGUAGE_MAP = {
     '1': 'Malayalam',
@@ -185,6 +186,14 @@ function setupListeners() {
 
             const targetSub = chip.dataset.sub;
             switchMembersSubView(targetSub);
+        });
+    }
+
+    // Selection Modal Search Input
+    const selectionSearch = document.getElementById('selection-search');
+    if (selectionSearch) {
+        selectionSearch.addEventListener('input', (e) => {
+            renderSelectionList(selectionContext.type, e.target.value);
         });
     }
 }
@@ -362,8 +371,8 @@ function renderRequests() {
         list.appendChild(card);
         card.querySelector(`#scan-${req.id}`).onclick = () => openScanner(req.id, resolvedMemberId, req.bookId);
         card.querySelector(`#approve-${req.id}`).onclick = () => updateRequestStatus(req.id, 'borrowed', req.bookId);
-        card.querySelector(`#reject-${req.id}`).onclick = () => {
-            if (confirm("Reject this book request? The record will be removed.")) {
+        card.querySelector(`#reject-${req.id}`).onclick = async () => {
+            if (await window.showConfirmModal("Reject this book request? The record will be removed.", "Confirm Rejection")) {
                 updateRequestStatus(req.id, 'rejected', req.bookId);
             }
         };
@@ -790,13 +799,17 @@ window.showMemberDetail = function (memberId) {
 
         ${historyHtml}
 
-        ${m.status === 'approved' ? `
-        <div style="margin-top: 32px;">
-            <button class="btn btn-primary w-100" style="padding: 16px; background: #083344;" onclick="printMemberCard('${m.id}')">
-                <svg class="lucide" style="width:20px; height:20px; margin-right:8px;"><use href="#icon-calendar"/></svg>
-                Print Library Card (PDF)
+        <div style="margin-top: 32px; display: flex; flex-direction: column; gap: 12px;">
+            ${m.status === 'approved' ? `
+            <button class="btn btn-success w-100" style="padding: 16px; display: flex; align-items:center; justify-content:center; gap:8px;" onclick="window.openSelectionModal('book', '${m.id}')">
+                <i data-lucide="book-plus" style="width:20px; height:20px;"></i>
+                Borrow a Book
             </button>
-        </div>` : ''}
+            <button class="btn btn-primary w-100" style="padding: 16px; background: #083344; display: flex; align-items:center; justify-content:center; gap:8px;" onclick="printMemberCard('${m.id}')">
+                <i data-lucide="credit-card" style="width:20px; height:20px;"></i>
+                Print Library Card (PDF)
+            </button>` : ''}
+        </div>
 
         ${m.status === 'pending' ? `
         <div style="display: flex; gap: 12px; margin-top: 32px;">
@@ -920,7 +933,7 @@ window.approveMember = async function (id) {
 };
 
 window.rejectMember = async function (id) {
-    if (confirm("Reject this application?")) {
+    if (await window.showConfirmModal("Reject this application?", "Reject Member")) {
         try {
             // Update local cache instantly
             libraryData.members = libraryData.members.filter(m => m.id !== id);
@@ -985,14 +998,15 @@ function renderInventory() {
         return;
     }
 
-    filteredBooks.forEach(book => {
-        const category = book.category || book.section || 'N/A';
-        const shelf = book.shelf_number || book.shelf || 'N/A';
+        filteredBooks.forEach(book => {
+            const category = book.category || book.section || 'N/A';
+            const shelf = book.shelf_number || book.shelf || 'N/A';
 
-        const card = document.createElement('div');
-        card.className = 'book-card';
-        card.style.alignItems = 'center';
-        card.innerHTML = `
+            const card = document.createElement('div');
+            card.className = 'book-card';
+            card.style.alignItems = 'center';
+            card.style.cursor = 'pointer';
+            card.innerHTML = `
             <div class="book-img-placeholder" style="width:60px; height:80px; position:relative;">
                 <i data-lucide="book" style="width:28px; height:28px;"></i>
                 <span style="position:absolute; bottom:4px; right:4px; font-size:9px; font-weight:800; color:var(--text-muted); opacity:0.5;">#${book.stock_number || '---'}</span>
@@ -1014,10 +1028,17 @@ function renderInventory() {
                 <button class="delete-book-btn" id="delete-${book.id}" title="Delete"><i data-lucide="trash-2"></i></button>
             </div>
         `;
-        list.appendChild(card);
-        card.querySelector(`#edit-${book.id}`).onclick = () => openBookForm(book.id);
-        card.querySelector(`#delete-${book.id}`).onclick = () => deleteBook(book.id);
-    });
+            list.appendChild(card);
+            card.onclick = () => window.showBookDetail(book.id);
+            card.querySelector(`#edit-${book.id}`).onclick = (e) => {
+                e.stopPropagation();
+                openBookForm(book.id);
+            };
+            card.querySelector(`#delete-${book.id}`).onclick = (e) => {
+                e.stopPropagation();
+                deleteBook(book.id);
+            };
+        });
 
     // Add Load More button
     if (libraryData.hasMore) {
@@ -1213,7 +1234,7 @@ window.closeAlertModal = function () {
 };
 
 async function deleteBook(id) {
-    if (confirm("Delete book?")) {
+    if (await window.showConfirmModal("Delete book?", "Confirm Deletion")) {
         try {
             await deleteDoc(doc(db, "books", id));
             // Remove from local cache
@@ -1457,7 +1478,7 @@ window.downloadHistoryPDF = function () {
 };
 
 window.deleteHistoryRecord = async function (id) {
-    if (confirm("Are you sure you want to delete this history record? This action cannot be undone.")) {
+    if (await window.showConfirmModal("Are you sure you want to delete this history record? This action cannot be undone.", "Delete History")) {
         try {
             await deleteDoc(doc(db, "requests", id));
             // Remove from local array to instantly update UI
@@ -1504,3 +1525,257 @@ function switchMembersSubView(sub) {
     });
 }
 window.switchMembersSubView = switchMembersSubView;
+
+window.openSelectionModal = function (type, targetId) {
+    selectionContext = { type, targetId };
+    const modal = document.getElementById('selection-modal');
+    const title = document.getElementById('selection-modal-title');
+    const searchInput = document.getElementById('selection-search');
+
+    // Close any other potential modals first to avoid overlapping
+    window.closeBookDetail();
+    closeMemberDetail();
+
+    title.textContent = type === 'member' ? 'Select Member for Book' : 'Select Book for Member';
+    searchInput.value = '';
+    searchInput.placeholder = type === 'member' ? 'Search by name or ID...' : 'Search by title or author...';
+
+    renderSelectionList(type);
+    modal.style.display = 'flex';
+    
+    // Use a slight timeout to ensure visibility before focusing
+    setTimeout(() => {
+        if (searchInput) searchInput.focus();
+    }, 100);
+};
+
+window.closeSelectionModal = function () {
+    document.getElementById('selection-modal').style.display = 'none';
+};
+
+function renderSelectionList(type, filterText = '') {
+    const list = document.getElementById('selection-list');
+    list.innerHTML = '';
+    const filter = filterText.toLowerCase();
+
+    if (type === 'member') {
+        const approvedMembers = libraryData.members.filter(m => m.status === 'approved');
+        const filtered = approvedMembers.filter(m =>
+            m.name.toLowerCase().includes(filter) ||
+            (m.memberId && m.memberId.toString().includes(filter))
+        );
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No members found.</p>';
+            return;
+        }
+
+        filtered.forEach(m => {
+            const item = document.createElement('div');
+            item.className = 'selection-item';
+            item.innerHTML = `
+                ${m.photoURL ? `<img src="${m.photoURL}" class="item-avatar">` : `<div class="item-avatar"><i data-lucide="user"></i></div>`}
+                <div class="item-info">
+                    <p class="item-title">${m.name}</p>
+                    <p class="item-subtitle">ID: ${m.memberId} | ${m.phone}</p>
+                </div>
+            `;
+            item.onclick = () => window.executeDirectBorrow(m.id, selectionContext.targetId);
+            list.appendChild(item);
+        });
+    } else {
+        const availableBooks = libraryData.books.filter(b => b.available !== false);
+        const filtered = availableBooks.filter(b =>
+            b.title.toLowerCase().includes(filter) ||
+            b.author.toLowerCase().includes(filter) ||
+            (b.stock_number && b.stock_number.toString().includes(filter))
+        );
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No available books found.</p>';
+            return;
+        }
+
+        filtered.forEach(b => {
+            const item = document.createElement('div');
+            item.className = 'selection-item';
+            item.innerHTML = `
+                <div class="item-avatar"><i data-lucide="book"></i></div>
+                <div class="item-info">
+                    <p class="item-title">${b.title}</p>
+                    <p class="item-subtitle">${b.author} | Shelf: ${b.shelf_number || 'N/A'}</p>
+                </div>
+            `;
+            item.onclick = () => window.executeDirectBorrow(selectionContext.targetId, b.id);
+            list.appendChild(item);
+        });
+    }
+    lucide.createIcons();
+}
+
+window.executeDirectBorrow = async function (memberId, bookId) {
+    const m = libraryData.members.find(mem => mem.id === memberId);
+    const b = libraryData.books.find(book => book.id === bookId);
+
+    if (!m || !b) {
+        showAlertModal("Selection Error. Please try again.", "Error");
+        return;
+    }
+
+    if (b.available === false) {
+        showAlertModal("This book is already borrowed.", "Error");
+        return;
+    }
+
+    if (!(await window.showConfirmModal(`Borrow "${b.title}" for ${m.name}?`, "Confirm Borrow"))) return;
+
+    try {
+        const requestData = {
+            bookId: b.id,
+            bookTitle: b.title,
+            memberId: m.memberId || 'N/A',
+            uid: m.uid || '',
+            userId: m.uid || '',
+            userEmail: m.email || '',
+            userName: m.name,
+            userPhone: m.phone,
+            status: 'borrowed',
+            timestamp: serverTimestamp(),
+            source: 'admin_direct'
+        };
+
+        const docRef = await addDoc(collection(db, "requests"), requestData);
+
+        // Update book availability
+        await updateDoc(doc(db, "books", b.id), { available: false });
+
+        // Update local caches
+        const bookIdx = libraryData.books.findIndex(book => book.id === b.id);
+        if (bookIdx !== -1) libraryData.books[bookIdx].available = false;
+
+        // Add to libraryData.requests locally
+        libraryData.requests.unshift({ id: docRef.id, ...requestData, timestamp: { seconds: Date.now() / 1000 } });
+
+        closeSelectionModal();
+        closeMemberDetail();
+        window.closeBookDetail();
+        showAlertModal(`"${b.title}" has been borrowed by ${m.name}.`, "Success");
+
+        // Re-render relevant views
+        if (currentView === 'requests-view') {
+            renderRequests();
+            renderBorrows();
+        } else if (currentView === 'inventory-view') {
+            renderInventory();
+        } else if (currentView === 'members-view') {
+            renderMembers();
+        }
+    } catch (e) {
+        console.error("Direct Borrow Error:", e);
+        showAlertModal("Failed to complete direct borrow. " + e.message, "Error");
+    }
+};
+
+window.showBookDetail = function (bookId) {
+    const b = libraryData.books.find(book => book.id === bookId);
+    if (!b) return;
+
+    const modal = document.getElementById('book-detail-modal');
+    const content = document.getElementById('book-detail-content');
+
+    const statusBadge = b.available !== false
+        ? '<span style="background:#ecfdf5; color:#059669; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase;">Available</span>'
+        : '<span style="background:#fff1f2; color:#be123c; padding:4px 12px; border-radius:20px; font-size:11px; font-weight:800; text-transform:uppercase;">Unavailable (Borrowed)</span>';
+
+    content.innerHTML = `
+        <div style="text-align: center; margin-bottom: 24px;">
+            <div style="width: 80px; height: 110px; background: var(--bg-color); border-radius: 12px; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: var(--primary-color);">
+                <i data-lucide="book" style="width: 40px; height: 40px;"></i>
+            </div>
+            <h2 style="font-size: 22px; font-weight: 800; color: var(--text-primary); margin-bottom: 8px;">${b.title}</h2>
+            <p style="font-size: 16px; color: var(--text-secondary); margin-bottom: 12px;">${b.author}</p>
+            ${statusBadge}
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 16px; padding-bottom: 20px;">
+            <div style="display: flex; align-items: center; gap: 16px; padding: 14px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><i data-lucide="tag" style="width:20px; height:20px;"></i></div>
+                <div>
+                    <p style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Category</p>
+                    <p style="font-size: 15px; font-weight: 700; color: var(--text-primary);">${b.category || b.section || 'N/A'}</p>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px; padding: 14px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><i data-lucide="hash" style="width:20px; height:20px;"></i></div>
+                <div>
+                    <p style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Stock Number</p>
+                    <p style="font-size: 15px; font-weight: 700; color: var(--text-primary);">#${b.stock_number || 'N/A'}</p>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px; padding: 14px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><i data-lucide="map-pin" style="width:20px; height:20px;"></i></div>
+                <div>
+                    <p style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Location</p>
+                    <p style="font-size: 15px; font-weight: 700; color: var(--text-primary);">Shelf: ${b.shelf_number || 'N/A'} | Row: ${b.row || 'N/A'}</p>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 16px; padding: 14px; background: #f8fafc; border-radius: 16px; border: 1px solid var(--border-color);">
+                <div style="color: var(--primary-color);"><i data-lucide="languages" style="width:20px; height:20px;"></i></div>
+                <div>
+                    <p style="font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 2px;">Language</p>
+                    <p style="font-size: 15px; font-weight: 700; color: var(--text-primary);">${getLanguageName(b.language)}</p>
+                </div>
+            </div>
+        </div>
+
+        ${b.available !== false ? `
+        <div style="margin-top: 24px;">
+            <button id="detail-borrow-btn" class="btn btn-primary w-100" style="padding: 16px; background: #166534; display: flex; align-items:center; justify-content:center; gap:8px;">
+                <i data-lucide="hand-metal" style="width:20px; height:20px;"></i>
+                Borrow for Member
+            </button>
+        </div>` : ''}
+    `;
+
+    modal.style.display = 'flex';
+    lucide.createIcons();
+
+    // Attach listener via JS for better reliability
+    const borrowBtn = document.getElementById('detail-borrow-btn');
+    if (borrowBtn) {
+        borrowBtn.onclick = () => window.openSelectionModal('member', b.id);
+    }
+};
+
+window.closeBookDetail = function () {
+    const modal = document.getElementById('book-detail-modal');
+    if (modal) modal.style.display = 'none';
+};
+
+window.showConfirmModal = function (message, title = "Confirm Action") {
+    return new Promise((resolve) => {
+        const modal = document.getElementById('confirm-modal');
+        const titleEl = document.getElementById('confirm-modal-title');
+        const descEl = document.getElementById('confirm-modal-desc');
+        const okBtn = document.getElementById('confirm-modal-ok');
+        const cancelBtn = document.getElementById('confirm-modal-cancel');
+
+        titleEl.textContent = title;
+        descEl.textContent = message;
+        modal.style.display = 'flex';
+        lucide.createIcons();
+
+        const cleanup = (value) => {
+            okBtn.onclick = null;
+            cancelBtn.onclick = null;
+            modal.style.display = 'none';
+            resolve(value);
+        };
+
+        okBtn.onclick = () => cleanup(true);
+        cancelBtn.onclick = () => cleanup(false);
+    });
+};
