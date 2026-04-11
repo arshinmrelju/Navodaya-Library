@@ -342,24 +342,30 @@ function renderRequests() {
 function renderBorrows() {
     const list = document.getElementById('borrowed-list');
     const pagination = document.getElementById('borrows-pagination');
-    list.innerHTML = '';
+    const historyList = document.getElementById('history-list');
+    const historyPagination = document.getElementById('borrows-pagination'); // Using same pagination container for now, placed at bottom
     
-    const borrows = libraryData.requests.filter(r => r.status === 'borrowed' || r.status === 'returned');
+    list.innerHTML = '';
+    if(historyList) historyList.innerHTML = '';
+    
+    const activeBorrows = libraryData.requests.filter(r => r.status === 'borrowed');
+    const historyBorrows = libraryData.requests.filter(r => r.status === 'returned');
 
-    if (borrows.length === 0 && !libraryData.isBorrowsLoading) {
-        list.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">No history found.</p>';
-        pagination.innerHTML = '';
-        return;
+    if (activeBorrows.length === 0 && !libraryData.isBorrowsLoading) {
+        list.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">No active borrows.</p>';
     }
 
-    borrows.forEach(req => {
+    if (historyBorrows.length === 0 && !libraryData.isBorrowsLoading) {
+        if(historyList) historyList.innerHTML = '<p style="color:var(--text-secondary); text-align:center;">No history found.</p>';
+    }
+
+    activeBorrows.forEach(req => {
         const card = document.createElement('div');
         card.className = 'book-card req-card';
-        const isReturned = req.status === 'returned';
         card.innerHTML = `
             <div class="req-header">
                 <span><strong>${req.userName}</strong></span>
-                <span style="color:${isReturned ? 'var(--text-muted)' : 'var(--success-color)'};">${isReturned ? 'Returned' : 'In Progress'}</span>
+                <span style="color:var(--success-color);">In Progress</span>
             </div>
             <div class="req-body">
                 <div class="book-info">
@@ -367,27 +373,54 @@ function renderBorrows() {
                     <p style="font-size:11px; color:var(--text-muted); margin:0;">Phone: ${req.userPhone || 'N/A'}</p>
                 </div>
             </div>
-            ${!isReturned ? `
             <div class="req-actions" style="display:flex; margin-top:12px;">
                 <button class="btn" style="background:var(--bg-color); color:var(--text-secondary); padding: 10px 18px; font-size:13px; font-weight:700; flex:1; border-radius:12px; border:1px solid var(--border-color); transition: all 0.2s;" id="return-${req.id}">Mark Returned</button>
-            </div> ` : ''}
+            </div>
         `;
         list.appendChild(card);
-        if (!isReturned) {
-            card.querySelector(`#return-${req.id}`).onclick = () => updateRequestStatus(req.id, 'returned', req.bookId);
-        }
+        card.querySelector(`#return-${req.id}`).onclick = () => updateRequestStatus(req.id, 'returned', req.bookId);
     });
 
-    // Render Load More button
+    if (historyList) {
+        historyBorrows.forEach(req => {
+            const card = document.createElement('div');
+            card.className = 'book-card req-card';
+            card.innerHTML = `
+                <div class="req-header">
+                    <span><strong>${req.userName}</strong></span>
+                    <span style="color:var(--text-muted);">Returned</span>
+                </div>
+                <div class="req-body">
+                    <div class="book-info">
+                        <h3 class="book-title" style="font-size:14px; margin-bottom:4px;">${req.bookTitle}</h3>
+                        <p style="font-size:11px; color:var(--text-muted); margin:0;">Phone: ${req.userPhone || 'N/A'}</p>
+                    </div>
+                </div>
+                <div class="req-actions" style="display:flex; margin-top:12px;">
+                    <button class="btn btn-danger-soft" style="padding: 10px 18px; font-size:13px; font-weight:700; flex:1; border-radius:12px; display:flex; gap:8px; align-items:center; justify-content:center;" id="delete-hist-${req.id}">
+                        <i data-lucide="trash-2" style="width:16px; height:16px;"></i> Delete Record
+                    </button>
+                </div>
+            `;
+            historyList.appendChild(card);
+            card.querySelector(`#delete-hist-${req.id}`).onclick = () => window.deleteHistoryRecord(req.id);
+        });
+    }
+
+    // Render Load More button at the bottom of history
     if (libraryData.borrowsHasMore) {
-        pagination.innerHTML = `
-            <button class="btn btn-load-more w-100" id="load-more-borrows" ${libraryData.isBorrowsLoading ? 'disabled' : ''}>
-                ${libraryData.isBorrowsLoading ? '<span class="spinner-small"></span> Loading...' : '<i data-lucide="plus-circle"></i> Load More History'}
-            </button>
-        `;
-        pagination.querySelector('#load-more-borrows').onclick = fetchBorrowsBatch;
+        if(historyPagination) {
+            historyPagination.innerHTML = `
+                <button class="btn btn-load-more w-100" id="load-more-borrows" ${libraryData.isBorrowsLoading ? 'disabled' : ''}>
+                    ${libraryData.isBorrowsLoading ? '<span class="spinner-small"></span> Loading...' : '<i data-lucide="plus-circle"></i> Load More History'}
+                </button>
+            `;
+            historyPagination.querySelector('#load-more-borrows').onclick = fetchBorrowsBatch;
+        }
     } else {
-        pagination.innerHTML = libraryData.requests.length > 0 ? '<p style="text-align:center; color:var(--text-muted); font-size:12px; margin:20px 0;">End of history.</p>' : '';
+        if(historyPagination) {
+            historyPagination.innerHTML = libraryData.requests.length > 0 ? '<p style="text-align:center; color:var(--text-muted); font-size:12px; margin:20px 0;">End of history.</p>' : '';
+        }
     }
 
     lucide.createIcons();
@@ -829,13 +862,20 @@ window.approveMember = async function(id) {
         
         const memberData = oldDocSnap.data();
 
-        await setDoc(newDocRef, {
+        const newMemberData = {
             ...memberData,
             status: 'approved',
             memberId: String(nextId),
             last_updated: serverTimestamp(),
             source: 'web'
-        });
+        };
+
+        // Update local cache instantly
+        libraryData.members = libraryData.members.filter(m => m.id !== id);
+        libraryData.members.push({ id: newDocId, ...newMemberData, timestamp: memberData.timestamp || { seconds: Date.now() / 1000 } });
+        if (currentView === 'members-view') renderMembers();
+
+        await setDoc(newDocRef, newMemberData);
 
         await deleteDoc(oldDocRef);
 
@@ -849,6 +889,10 @@ window.approveMember = async function(id) {
 window.rejectMember = async function(id) {
     if (confirm("Reject this application?")) {
         try {
+            // Update local cache instantly
+            libraryData.members = libraryData.members.filter(m => m.id !== id);
+            if (currentView === 'members-view') renderMembers();
+            
             await deleteDoc(doc(db, "members", id));
             showAlertModal("Application rejected and removed.", "Success");
         } catch(e) {
@@ -860,12 +904,29 @@ window.rejectMember = async function(id) {
 
 async function updateRequestStatus(reqId, newStatus, bookId) {
     try {
+        // Update locally for instant UI update and to prevent onSnapshot race condition
+        const reqIndex = libraryData.requests.findIndex(r => r.id === reqId);
+        if (reqIndex !== -1) {
+            libraryData.requests[reqIndex].status = newStatus;
+            if (currentView === 'requests-view') {
+                renderRequests();
+                renderBorrows();
+            }
+        }
+
         await updateDoc(doc(db, "requests", reqId), { status: newStatus });
         
         // If borrowed, mark book unavailable. If returned/rejected, mark available.
         const available = (newStatus !== 'borrowed');
         if (newStatus === 'borrowed' || newStatus === 'returned' || newStatus === 'rejected') {
             await updateDoc(doc(db, "books", bookId), { available: available });
+            
+            // Update book locally
+            const bookIdx = libraryData.books.findIndex(b => b.id === bookId);
+            if (bookIdx !== -1) {
+                libraryData.books[bookIdx].available = available;
+                if (currentView === 'inventory-view') renderInventory();
+            }
         }
     } catch (e) {
         console.error(e);
@@ -1282,5 +1343,93 @@ window.forceApprove = async function() {
         updateRequestStatus(requestId, 'borrowed', bookId);
         showAlertModal("Loan forced approved by admin.", "Notice");
         closeScanner();
+    }
+};
+
+window.downloadHistoryPDF = function() {
+    const list = libraryData.requests.filter(r => r.status === 'returned');
+    if (list.length === 0) {
+        showAlertModal("No history available to download.", "Notice");
+        return;
+    }
+
+    // Sort by most recent
+    list.sort((a,b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
+
+    const printArea = document.getElementById('printable-card-area');
+    
+    let rowsHtml = '';
+    list.forEach((r, index) => {
+        const dateStr = r.timestamp ? new Date(r.timestamp.seconds * 1000).toLocaleDateString() : 'N/A';
+        const bg = index % 2 === 0 ? '#ffffff' : '#f8fafc';
+        rowsHtml += `
+            <tr style="background-color: ${bg}; border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 14px 16px; text-align: center; color: #64748b; font-weight: 600;">${index + 1}</td>
+                <td style="padding: 14px 16px; font-weight: 700; color: #0f172a; font-size: 14px;">${r.userName}</td>
+                <td style="padding: 14px 16px; font-weight: 700; color: #0f172a; font-size: 14px;">${r.bookTitle}</td>
+                <td style="padding: 14px 16px; color: #475569;">${dateStr}</td>
+                <td style="padding: 14px 16px; color: #166534; font-weight: bold;">Returned</td>
+            </tr>
+        `;
+    });
+
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    printArea.innerHTML = `
+        <div class="print-list" style="width: 100%; max-width: 850px; margin: 0 auto; font-family: 'Inter', sans-serif; padding: 30px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
+                <h1 style="color: #083344; font-size: 32px; font-weight: 800; margin: 0; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; gap: 12px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #0fa3b1;"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg>
+                    Nayodayam Library
+                </h1>
+                <h2 style="color: #64748b; font-size: 14px; margin: 8px 0 0 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">Borrowing History Log</h2>
+                <div style="display: flex; justify-content: center; gap: 12px; margin-top: 16px;">
+                    <span style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; color: #475569; font-size: 12px; font-weight: 600;">Date Generated: ${currentDate}</span>
+                    <span style="background: #e0f2fe; padding: 6px 14px; border-radius: 20px; color: #0284c7; font-size: 12px; font-weight: 600;">Total Records: ${list.length}</span>
+                </div>
+            </div>
+            
+            <div style="border: 1px solid #e2e8f0; border-radius: 12px; overflow: hidden; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background-color: #083344; color: white;">
+                            <th style="padding: 16px; text-align: center; width: 40px; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">#</th>
+                            <th style="padding: 16px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Member Name</th>
+                            <th style="padding: 16px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Book Title</th>
+                            <th style="padding: 16px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Date</th>
+                            <th style="padding: 16px; text-align: left; font-weight: 600; text-transform: uppercase; font-size: 11px; letter-spacing: 1px;">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${rowsHtml}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div style="margin-top: 50px; font-size: 11px; color: #94a3b8; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <p style="margin: 0;">Official Record - Nayodayam Library - Amarakuni, Pulpally, Wayanad-673579, Kerala</p>
+                <p style="margin: 0; opacity: 0.7;">Developed by Dept. of English Interns, Pazhassiraja College</p>
+            </div>
+        </div>
+    `;
+
+    setTimeout(() => {
+        window.print();
+    }, 100);
+};
+
+window.deleteHistoryRecord = async function(id) {
+    if (confirm("Are you sure you want to delete this history record? This action cannot be undone.")) {
+        try {
+            await deleteDoc(doc(db, "requests", id));
+            // Remove from local array to instantly update UI
+            libraryData.requests = libraryData.requests.filter(r => r.id !== id);
+            renderBorrows();
+            showAlertModal("History record deleted.", "Success");
+        } catch(e) {
+            console.error("Error deleting history record: ", e);
+            showAlertModal("Failed to delete record.", "Error");
+        }
     }
 };
