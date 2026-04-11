@@ -457,29 +457,43 @@ main {
     margin-bottom: 0;
 }
 
-/* On mobile, stack columns to prevent long email from breaking layout */
+/* On mobile, stack columns to prevent long email from breaking layout, and left-align for a cleaner look */
 @media (max-width: 768px) {
     .footer-grid {
         grid-template-columns: 1fr;
     }
 
+    .footer-brand {
+        text-align: left;
+    }
+
+    .footer-brand .footer-tagline {
+        margin-left: 0;
+        margin-right: 0;
+    }
+
+    .footer-socials {
+        justify-content: flex-start;
+    }
+
     .footer-links {
         border-right: none !important;
         border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-        text-align: center;
+        text-align: left;
     }
 
     .footer-links ul {
-        align-items: center;
+        align-items: flex-start;
     }
 
     .footer-contact {
-        text-align: center;
+        text-align: left;
     }
 
     .footer-contact p {
-        justify-content: center;
-        word-break: break-all;
+        justify-content: flex-start;
+        word-break: break-word;
+        text-align: left;
     }
 }
 
