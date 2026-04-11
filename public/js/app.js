@@ -140,16 +140,32 @@ function setupEventListeners() {
         });
     });
 
+    document.getElementById('search-type').addEventListener('change', (e) => {
+        const type = e.target.value;
+        const input = document.getElementById('search-input');
+        const labels = {
+            'title': 'Search by title...',
+            'author': 'Search by author...',
+            'stock_number': 'Search by Book ID...'
+        };
+        input.placeholder = labels[type] || 'Search...';
+        if (input.value.length > 0) {
+            input.dispatchEvent(new Event('input'));
+        }
+    });
+
     document.getElementById('search-input').addEventListener('input', async (e) => {
         const term = e.target.value;
+        const searchField = document.getElementById('search-type').value;
+
         if (term.length > 2) {
             // Reset pagination for search
             libraryData.hasMore = false;
             // Perform server-side prefix search for performance
             const q = query(
                 collection(db, "books"),
-                where("title", ">=", term),
-                where("title", "<=", term + '\uf8ff'),
+                where(searchField, ">=", term),
+                where(searchField, "<=", term + '\uf8ff'),
                 limit(50)
             );
             const snapshot = await getDocs(q);
@@ -265,9 +281,9 @@ function renderLibraryView(searchQuery = '', serverResults = null) {
         if (serverResults) return true; // Already filtered by server
         if (!searchQuery) return true; // Show all if no search
 
-        const titleMatch = book.title?.toLowerCase().includes(searchQuery.toLowerCase());
-        const authorMatch = book.author?.toLowerCase().includes(searchQuery.toLowerCase());
-        return titleMatch || authorMatch;
+        const searchField = document.getElementById('search-type')?.value || 'title';
+        const fieldValue = book[searchField] ? String(book[searchField]).toLowerCase() : '';
+        return fieldValue.includes(searchQuery.toLowerCase());
     });
 
     if (libraryData.isLoading) {

@@ -196,6 +196,42 @@ function setupListeners() {
             renderSelectionList(selectionContext.type, e.target.value);
         });
     }
+
+    // Inventory Search
+    const invSearchType = document.getElementById('inventory-search-type');
+    const invSearchInput = document.getElementById('inventory-search-input');
+    if (invSearchType && invSearchInput) {
+        invSearchType.addEventListener('change', () => {
+            const labels = {
+                'title': 'Search by title...',
+                'author': 'Search by author...',
+                'stock_number': 'Search by Book ID...'
+            };
+            invSearchInput.placeholder = labels[invSearchType.value] || 'Search books...';
+            if (invSearchInput.value) renderInventory();
+        });
+        invSearchInput.addEventListener('input', () => {
+            renderInventory();
+        });
+    }
+
+    // Member Search
+    const memSearchType = document.getElementById('member-search-type');
+    const memSearchInput = document.getElementById('member-search-input');
+    if (memSearchType && memSearchInput) {
+        memSearchType.addEventListener('change', () => {
+            const labels = {
+                'name': 'Search by name...',
+                'memberId': 'Search by Member ID...',
+                'phone': 'Search by phone...'
+            };
+            memSearchInput.placeholder = labels[memSearchType.value] || 'Search members...';
+            if (memSearchInput.value) renderMembers();
+        });
+        memSearchInput.addEventListener('input', () => {
+            renderMembers();
+        });
+    }
 }
 
 function setupDataListeners() {
@@ -536,8 +572,18 @@ function renderMembers() {
     pendingList.innerHTML = '';
     approvedList.innerHTML = '';
 
+    const searchTerm = document.getElementById('member-search-input')?.value.trim().toLowerCase() || '';
+    const searchField = document.getElementById('member-search-type')?.value || 'name';
+
     const pendings = libraryData.members.filter(m => m.status === 'pending');
-    const approved = libraryData.members.filter(m => m.status === 'approved');
+    const approved = libraryData.members.filter(m => {
+        if (m.status !== 'approved') return false;
+        if (searchTerm) {
+            const fieldValue = m[searchField] ? String(m[searchField]).toLowerCase() : '';
+            return fieldValue.includes(searchTerm);
+        }
+        return true;
+    });
 
     // 🔥 Sort numerically (1, 2, 3...) instead of lexicographically (1, 10, 2)
     const sortById = (a, b) => {
@@ -1002,10 +1048,23 @@ function renderInventory() {
     const list = document.getElementById('inventory-list');
     list.innerHTML = '';
 
+    const searchTerm = document.getElementById('inventory-search-input')?.value.trim().toLowerCase() || '';
+    const searchField = document.getElementById('inventory-search-type')?.value || 'title';
+
     const filteredBooks = libraryData.books.filter(book => {
-        if (adminCategoryFilter === 'All') return true;
-        const bookCat = book.category || book.section || 'Other';
-        return bookCat === adminCategoryFilter;
+        // Category filter
+        if (adminCategoryFilter !== 'All') {
+            const bookCat = book.category || book.section || 'Other';
+            if (bookCat !== adminCategoryFilter) return false;
+        }
+
+        // Search filter
+        if (searchTerm) {
+            const fieldValue = book[searchField] ? String(book[searchField]).toLowerCase() : '';
+            return fieldValue.includes(searchTerm);
+        }
+
+        return true;
     });
 
     if (filteredBooks.length === 0) {

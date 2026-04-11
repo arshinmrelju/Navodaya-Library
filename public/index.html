@@ -381,10 +381,13 @@
             </div>
 
             <div class="search-container">
-                <svg class="lucide" style="color:var(--text-muted); margin-right:12px;">
-                    <use href="#icon-search" />
-                </svg>
-                <input type="text" id="search-input" class="search-input" placeholder="Search title or author...">
+                <select id="search-type" class="search-type-select">
+                    <option value="title">Title</option>
+                    <option value="author">Author</option>
+                    <option value="stock_number">Book ID</option>
+                </select>
+                <div class="search-divider"></div>
+                <input type="text" id="search-input" class="search-input" placeholder="Search by title...">
             </div>
 
             <div id="book-list" class="book-list">
