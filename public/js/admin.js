@@ -35,6 +35,37 @@ let selectionContext = { type: null, targetId: null }; // For direct borrow
 let voiceEnabled = localStorage.getItem('voiceEnabled') !== 'false'; // Default to true
 let isFirstRequestsLoad = true;
 let isFirstMembersLoad = true;
+let appVoices = [];
+
+function loadVoices() {
+    if (!window.speechSynthesis) return;
+    appVoices = window.speechSynthesis.getVoices();
+    if (appVoices.length > 0) {
+        // Aggressive matching for Malayalam
+        const ml = appVoices.filter(v => 
+            v.lang.toLowerCase().includes('ml') || 
+            v.name.toLowerCase().includes('malayalam')
+        );
+        if (ml.length > 0) {
+            console.log("%c[VoiceSystem] Detected Malayalam Voices:", "color: #059669; font-weight: bold;", ml.map(v => v.name));
+        } else {
+            console.warn("[VoiceSystem] No Malayalam voices found. Available languages:", [...new Set(appVoices.map(v => v.lang))]);
+        }
+    }
+}
+
+// Global debug helper
+window.listAllVoices = () => {
+    const voices = window.speechSynthesis.getVoices();
+    console.table(voices.map(v => ({ name: v.name, lang: v.lang, local: v.localService })));
+};
+
+if (window.speechSynthesis) {
+    if (window.speechSynthesis.onvoiceschanged !== undefined) {
+        window.speechSynthesis.onvoiceschanged = loadVoices;
+    }
+    loadVoices();
+}
 
 const LANGUAGE_MAP = {
     '1': 'Malayalam',
@@ -142,7 +173,7 @@ function initVoiceFeature() {
             localStorage.setItem('voiceEnabled', voiceEnabled);
             updateUI();
             if (voiceEnabled) {
-                speakNotification("Voice alerts enabled");
+                speakNotification("Voice alerts enabled", "വോയിസ് അലേർട്ടുകൾ പ്രവർത്തനക്ഷമമാക്കി");
             }
         });
     }
@@ -200,30 +231,55 @@ function initCustomDropdown(id, callback) {
     };
 }
 
-function speakNotification(text) {
+function speakNotification(text, malayalamText = null) {
     if (!voiceEnabled || !window.speechSynthesis) return;
 
-    // Standard Web Speech API
-    const utterance = new SpeechSynthesisUtterance(text);
-    // 0.9 - 0.95 rate is usually clearer for Indian accents
-    utterance.rate = 0.9; 
-    utterance.pitch = 1.0;
-    utterance.volume = 1.0;
+    // Refresh voices if empty
+    if (appVoices.length === 0) appVoices = window.speechSynthesis.getVoices();
+    
+    // Stop any current speaking to start clear
+    window.speechSynthesis.cancel();
 
-    const voices = window.speechSynthesis.getVoices();
+    // 1. Find Voices
+    const englishVoice = appVoices.find(v => v.lang.toLowerCase().includes('en-in') || v.name.includes('India')) ||
+                         appVoices.find(v => v.lang.toLowerCase().startsWith('en-gb')) ||
+                         appVoices.find(v => v.name.includes('Google') || v.name.includes('Premium'));
+
+    const malayalamVoice = appVoices.find(v => 
+        v.lang.toLowerCase().includes('ml') || 
+        v.name.toLowerCase().includes('malayalam') ||
+        v.name.includes('Kartika')
+    );
+
+    // 2. Queue English
+    const engUtterance = new SpeechSynthesisUtterance(text);
+    engUtterance.rate = 0.95;
+    if (englishVoice) engUtterance.voice = englishVoice;
     
-    // Targeted selection for Indian English (en-IN) to get that familiar accent
-    const indianVoice = voices.find(v => v.lang === 'en-IN' || v.name.includes('India')) ||
-                       voices.find(v => v.lang === 'en-GB'); // UK English as second fallback (clearer)
-    
-    if (indianVoice) {
-        utterance.voice = indianVoice;
+    // 3. Queue Malayalam (if provided)
+    if (malayalamText) {
+        const malUtterance = new SpeechSynthesisUtterance(malayalamText);
+        malUtterance.rate = 0.8;
+        
+        if (malayalamVoice) {
+            malUtterance.voice = malayalamVoice;
+            console.log(`[VoiceSystem] Play Sequence: EN(${englishVoice?.name || 'Default'}) -> ML(${malayalamVoice.name})`);
+        } else {
+            // If no ML voice, we play the ML text with Eng voice as last resort
+            if (englishVoice) malUtterance.voice = englishVoice;
+            console.warn("[VoiceSystem] ML voice missing. Using fallback for translation.");
+        }
+
+        // Sequential Play: On mobile, chaining via speak() is sometimes more reliable than onend
+        window.speechSynthesis.speak(engUtterance);
+        
+        // Slight delay for the second part on some older Android browsers
+        setTimeout(() => {
+            window.speechSynthesis.speak(malUtterance);
+        }, 100);
     } else {
-        const preferredVoice = voices.find(v => v.name.includes('Google') || v.name.includes('Premium'));
-        if (preferredVoice) utterance.voice = preferredVoice;
+        window.speechSynthesis.speak(engUtterance);
     }
-
-    window.speechSynthesis.speak(utterance);
 }
 
 window.logout = function () {
@@ -374,7 +430,11 @@ function setupDataListeners() {
             snapshot.docChanges().forEach(change => {
                 if (change.type === "added") {
                     const data = change.doc.data();
-                    speakNotification("Attention librarian. You have a new book request from " + (data.userName || "a member"));
+                    const name = data.userName || "a member";
+                    speakNotification(
+                        "Attention librarian. You have a new book request from " + name,
+                        "ശ്രദ്ധിക്കുക, പുതിയൊരു ബുക്ക് റിക്വസ്റ്റ് വന്നിട്ടുണ്ട്. അപേക്ഷകൻ " + name
+                    );
                 }
             });
         }
@@ -404,7 +464,11 @@ function setupDataListeners() {
             snapshot.docChanges().forEach(change => {
                 if (change.type === "added") {
                     const data = change.doc.data();
-                    speakNotification("Librarian alert. New membership application from " + (data.name || "a new member"));
+                    const name = data.name || "a new member";
+                    speakNotification(
+                        "Librarian alert. New membership application from " + name,
+                        "ശ്രദ്ധിക്കുക, പുതിയൊരു അംഗത്വ അപേക്ഷ ലഭിച്ചിട്ടുണ്ട്. അപേക്ഷകൻ " + name
+                    );
                 }
             });
         }
