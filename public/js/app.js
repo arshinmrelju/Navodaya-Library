@@ -16,8 +16,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 import {
     signInWithPopup,
-    signInWithRedirect,
-    getRedirectResult,
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -58,12 +56,6 @@ const headerTitle = document.getElementById('header-title');
 const navItems = document.querySelectorAll('.nav-item');
 
 export function initApp() {
-    // Handle redirect result for APK/Mobile flow
-    getRedirectResult(auth).catch((error) => {
-        console.error("Redirect auth error:", error);
-        // Common error in restricted webviews, but we should log it
-    });
-
     // Monitor Auth State
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -88,6 +80,16 @@ export function initApp() {
 
     setupEventListeners();
     navigateTo('welcome-view');
+}
+
+function showAuthLoading() {
+    const modal = document.getElementById('auth-loading-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function hideAuthLoading() {
+    const modal = document.getElementById('auth-loading-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 function setupFirestoreListeners() {
@@ -232,21 +234,26 @@ function setupEventListeners() {
     });
 
     document.getElementById('google-signin-btn').addEventListener('click', async () => {
+        showAuthLoading();
         try {
             // Environment detection to choose best Auth flow
             const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
             const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
             if (isMobile || isStandalone) {
-                // Best for APKs and PWAs on mobile to avoid losing context
-                await signInWithRedirect(auth, googleProvider);
+                // Using Popup 'inside' the app as requested. Redirect flow fails with localhost in APKs.
+                await signInWithPopup(auth, googleProvider);
             } else {
                 // Best for Desktop Web
                 await signInWithPopup(auth, googleProvider);
             }
         } catch (error) {
             console.error("Login failed", error);
-            showAlertModal("Sign in failed. Please try again.", "Error", 'error');
+            if (error.code !== 'auth/popup-closed-by-user') {
+                showAlertModal("Sign in failed. Please try again or check if popups are blocked.", "Error", 'error');
+            }
+        } finally {
+            hideAuthLoading();
         }
     });
 }

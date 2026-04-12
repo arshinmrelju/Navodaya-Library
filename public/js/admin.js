@@ -1,8 +1,6 @@
 import { db, auth, googleProvider } from './firebase-config.js';
 import {
     signInWithPopup,
-    signInWithRedirect,
-    getRedirectResult,
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
@@ -100,11 +98,6 @@ let libraryData = {
 };
 
 export function initAdmin() {
-    // Handle redirect result for APK/Mobile flow
-    getRedirectResult(auth).catch((error) => {
-        console.error("Redirect auth error:", error);
-    });
-
     // Listen for Auth changes (modern Firebase approach)
     onAuthStateChanged(auth, (user) => {
         if (user) {
@@ -126,21 +119,26 @@ export function initAdmin() {
     const googleBtn = document.getElementById('admin-google-login');
     if (googleBtn) {
         googleBtn.addEventListener('click', async () => {
+            showAuthLoading();
             try {
-                // Environment detection to choose best Auth flow for APK vs Web
+                // Environment detection
                 const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
                 const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
 
                 if (isMobile || isStandalone) {
-                    // Best for APKs and PWAs on mobile to avoid losing context
-                    await signInWithRedirect(auth, googleProvider);
+                    // Using Popup 'inside' the app as requested. Redirect flow fails with localhost in APKs.
+                    await signInWithPopup(auth, googleProvider);
                 } else {
                     // Best for Desktop Web
                     await signInWithPopup(auth, googleProvider);
                 }
             } catch (error) {
                 console.error("Google Sign-In Error:", error);
-                showAlertModal("Failed to sign in with Google. " + error.message, "Sign-in Error");
+                if (error.code !== 'auth/popup-closed-by-user') {
+                    showAlertModal("Failed to sign in with Google. " + error.message, "Sign-in Error");
+                }
+            } finally {
+                hideAuthLoading();
             }
         });
     }
@@ -168,6 +166,16 @@ function showApp() {
     setupDataListeners();
     initVoiceFeature();
     lucide.createIcons();
+}
+
+function showAuthLoading() {
+    const modal = document.getElementById('auth-loading-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function hideAuthLoading() {
+    const modal = document.getElementById('auth-loading-modal');
+    if (modal) modal.style.display = 'none';
 }
 
 function initVoiceFeature() {
