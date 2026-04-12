@@ -98,6 +98,15 @@ let libraryData = {
 };
 
 export function initAdmin() {
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('[PWA] Admin Service Worker registered:', reg.scope))
+                .catch(err => console.log('[PWA] Admin Service Worker failed:', err));
+        });
+    }
+
     // Listen for Auth changes (modern Firebase approach)
     onAuthStateChanged(auth, (user) => {
         if (user) {

@@ -2,9 +2,11 @@
   "name": "Nayodayam Library",
   "short_name": "Nayodayam",
   "description": "Empowering Rural Communities Through Books. Access our digital catalog, request books, and manage your library membership online.",
-  "start_url": "./index.html",
+  "id": "/index.html",
+  "start_url": "/index.html",
+  "scope": "/",
   "display": "standalone",
-  "background_color": "#ffffff",
+  "background_color": "#f8fafc",
   "theme_color": "#083344",
   "orientation": "portrait",
   "icons": [
@@ -19,6 +21,22 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Browse Books",
+      "short_name": "Browse",
+      "description": "Explore the library catalog",
+      "url": "/index.html#library-view",
+      "icons": [{ "src": "favicon.svg", "sizes": "any" }]
+    },
+    {
+      "name": "My ID Card",
+      "short_name": "ID Card",
+      "description": "View your library membership card",
+      "url": "/index.html#membership-view",
+      "icons": [{ "src": "favicon.svg", "sizes": "any" }]
     }
   ]
 }

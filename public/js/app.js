@@ -60,6 +60,15 @@ let headerTitle = null;
 let navItems = null;
 
 export function initApp() {
+    // Register Service Worker for PWA
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js')
+                .then(reg => console.log('[PWA] Service Worker registered:', reg.scope))
+                .catch(err => console.log('[PWA] Service Worker failed:', err));
+        });
+    }
+
     // Populate DOM references
     views = document.querySelectorAll('.view');
     headerTitle = document.getElementById('header-title');
