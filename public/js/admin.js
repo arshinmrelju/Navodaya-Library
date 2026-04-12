@@ -1229,9 +1229,12 @@ function renderInventory() {
             card.style.alignItems = 'center';
             card.style.cursor = 'pointer';
             card.innerHTML = `
-            <div class="book-img-placeholder" style="width:60px; height:80px; position:relative;">
-                <i data-lucide="book" style="width:28px; height:28px;"></i>
-                <span style="position:absolute; bottom:4px; right:4px; font-size:9px; font-weight:800; color:var(--text-muted); opacity:0.5;">#${book.stock_number || '---'}</span>
+            <div class="book-img-placeholder" style="width:60px; height:80px; position:relative; overflow:hidden;">
+                ${book.coverImageBase64
+                    ? `<img src="${book.coverImageBase64}" style="width:100%; height:100%; object-fit:cover; filter:contrast(1.25) brightness(1.05);" alt="cover">`
+                    : `<i data-lucide="book" style="width:28px; height:28px;"></i>
+                       <span style="position:absolute; bottom:4px; right:4px; font-size:9px; font-weight:800; color:var(--text-muted); opacity:0.5;">#${book.stock_number || '---'}</span>`
+                }
             </div>
             <div class="book-info">
                 <h3 class="book-title" style="font-size:16px;">${book.title}</h3>
@@ -1240,6 +1243,7 @@ function renderInventory() {
                     <span style="background:var(--bg-color); padding:2px 6px; border-radius:4px;">${category}</span>
                     <span style="background:var(--bg-color); padding:2px 6px; border-radius:4px;">Shelf ${shelf}</span>
                     <span style="background:var(--bg-color); padding:2px 6px; border-radius:4px;">${getLanguageName(book.language)}</span>
+                    ${book.coverImageBase64 ? `<span style="background:#dcfce7; color:#166534; padding:2px 6px; border-radius:4px; font-weight:700;">📷 Cover</span>` : ''}
                 </div>
                 <span class="status-badge ${book.available !== false ? 'status-available' : 'status-borrowed'}">
                     ${book.available !== false ? 'Available' : 'Unavailable'}

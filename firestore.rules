@@ -28,10 +28,19 @@ service cloud.firestore {
     // COLLECTION RULES
     // ==========================================
 
-    // BOOKS: Publicly viewable, but only admin can modify
+    // BOOKS: Publicly viewable. Admin can write all fields.
+    // Authenticated users (borrowers) may update ONLY the cover image fields.
     match /books/{bookId} {
       allow read: if true;
-      allow write: if isAdmin();
+      allow create, delete: if isAdmin();
+      allow update: if isAdmin() || canUpdateCoverOnly();
+    }
+
+    // Allows any logged-in user to update only the book cover fields
+    function canUpdateCoverOnly() {
+      return request.auth != null &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['coverImageBase64', 'coverUpdatedAt']);
     }
 
     // MEMBERS: Users can apply and see their own status. Admin manages all.

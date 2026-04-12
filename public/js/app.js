@@ -371,9 +371,12 @@ function renderLibraryView(searchQuery = '', serverResults = null) {
         card.className = 'book-card';
         card.innerHTML = `
             <div class="book-img-placeholder" style="background: var(--bg-color); position: relative;">
-                <i data-lucide="book" style="width:40px; height:40px; color:var(--primary-light); opacity:0.5;"></i>
-                <div style="position: absolute; top: 8px; right: 8px; font-size: 8px; font-weight: 800; color: white; background: var(--primary-color); padding: 2px 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px;">${section}</div>
-                <span style="position: absolute; bottom: 8px; right: 8px; font-size: 10px; font-weight: 800; color: var(--text-muted); opacity: 0.5;">#${book.stock_number || '000'}</span>
+                ${book.coverImageBase64
+                    ? `<img src="${book.coverImageBase64}" class="book-cover-img-card doc-scan-filter" alt="cover">`
+                    : `<i data-lucide="book" style="width:40px; height:40px; color:var(--primary-light); opacity:0.5;"></i>
+                       <div style="position: absolute; top: 8px; right: 8px; font-size: 8px; font-weight: 800; color: white; background: var(--primary-color); padding: 2px 6px; border-radius: 6px; text-transform: uppercase; letter-spacing: 0.5px;">${section}</div>
+                       <span style="position: absolute; bottom: 8px; right: 8px; font-size: 10px; font-weight: 800; color: var(--text-muted); opacity: 0.5;">#${book.stock_number || '000'}</span>`
+                }
             </div>
             <div class="book-info">
                 <div style="flex-grow: 1;">
@@ -433,6 +436,7 @@ function showBookDetail(book, myRequest) {
 
     let actionBtnHtml = '';
     let statusGuidance = '';
+    let scanCoverBtnHtml = '';
 
     if (myRequest) {
         if (myRequest.status === 'pending') {
@@ -444,6 +448,17 @@ function showBookDetail(book, myRequest) {
                 <p style="font-size:12px; font-weight:800; color:#2e7d32; text-transform:uppercase; margin-bottom:4px; display:flex; align-items:center; gap:6px;"><i data-lucide="info" style="width:14px;"></i> Return Guidance</p>
                 <p style="font-size:13px; color:var(--text-secondary); margin:0;">Please return this copy to <strong>Shelf ${book.section || book.category || 'N/A'} - Row ${book.row || 'N/A'}</strong> when you are finished reading.</p>
             </div>`;
+            // Scan cover button for borrowers
+            const hasCover = !!book.coverImageBase64;
+            scanCoverBtnHtml = `
+                <button class="btn btn-add-cover w-100" id="scan-cover-btn-detail" style="margin-top:16px; padding:14px; display:flex; align-items:center; justify-content:center; gap:10px;">
+                    <i data-lucide="${hasCover ? 'refresh-cw' : 'camera'}"></i>
+                    ${hasCover ? 'Replace Book Cover Scan' : 'Scan Book Cover 📷'}
+                </button>
+                <p style="margin-top:8px; font-size:11px; color:var(--text-muted); text-align:center;">
+                    ${hasCover ? 'A cover scan already exists. Scan again to update it.' : 'Help the library — scan the cover page of this book!'}
+                </p>
+            `;
         } else if (myRequest.status === 'returned') {
             actionBtnHtml = `<button class="btn btn-primary w-100" style="background-color:var(--primary-color);" disabled>Completed</button>`;
             statusGuidance = `<p style="margin-top:12px; font-size:13px; color:var(--text-secondary); text-align:center;">You have successfully returned this book. Thank you!</p>`;
@@ -460,10 +475,16 @@ function showBookDetail(book, myRequest) {
     const section = book.section || book.category || 'N/A';
     const shelf = book.shelf_number || book.shelf || 'N/A';
 
+    // Book cover: real scan or default icon
+    const coverHtml = book.coverImageBase64
+        ? `<img src="${book.coverImageBase64}" class="book-cover-img doc-scan-filter" alt="Book cover" style="border-radius:12px;">`
+        : `<i data-lucide="book-open" style="width:100px; height:100px; color:var(--primary-color);"></i>
+           <p style="margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--text-muted); opacity: 0.6;">No cover scan yet</p>`;
+
     container.innerHTML = `
-        <div class="detail-img-container" style="background: var(--glass-bg); border-radius: 24px; margin-bottom: 24px;">
-            <i data-lucide="book-open" style="width:100px; height:100px; color:var(--primary-color);"></i>
-            <p style="margin-top: 12px; font-size: 12px; font-weight: 800; color: var(--text-muted); opacity: 0.6;">Inventory ID: ${book.stock_number || book.id.substring(0, 6)}</p>
+        <div class="detail-img-container" style="background: ${book.coverImageBase64 ? '#000' : 'var(--glass-bg)'}; border-radius: 24px; margin-bottom: 24px; position: relative; overflow: hidden;">
+            ${coverHtml}
+            <div style="position:absolute; bottom:8px; right:12px; font-size:10px; font-weight:800; color:${book.coverImageBase64 ? 'rgba(255,255,255,0.7)' : 'var(--text-muted)'}; opacity:0.7;">ID: ${book.stock_number || book.id.substring(0, 6)}</div>
         </div>
         <h2 class="detail-title">${book.title}</h2>
         <p class="detail-author">${book.author}</p>
@@ -491,12 +512,18 @@ function showBookDetail(book, myRequest) {
         <div class="detail-actions">
             ${actionBtnHtml}
             ${statusGuidance}
+            ${scanCoverBtnHtml}
         </div>
     `;
 
     const btn = container.querySelector(`#req-btn-${book.id}`);
     if (btn) {
         btn.onclick = () => handleRequestAction(book.id);
+    }
+
+    const scanBtn = container.querySelector('#scan-cover-btn-detail');
+    if (scanBtn) {
+        scanBtn.onclick = () => window.openDocScanner(book.id);
     }
 
     navigateTo('book-detail-view');
@@ -962,3 +989,402 @@ function renderMyBooksView() {
     });
     lucide.createIcons();
 }
+
+// ================================================================
+//  DOCUMENT SCANNER ENGINE — WhatsApp-style book cover scanner
+// ================================================================
+
+let _scannerStream = null;
+let _scannerTargetBookId = null;
+let _scannerCapturedDataUrl = null;
+
+/**
+ * Apply document-scan post-processing to a canvas:
+ * 1. Slight desaturation to remove colour casts from room lighting
+ * 2. Contrast / level stretch — shadows deeper, whites brighter
+ * 3. Warm paper tint on very light areas for that scanned-doc look
+ */
+function applyDocScanEffect(canvas) {
+    const ctx = canvas.getContext('2d');
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const d = imageData.data;
+
+    for (let i = 0; i < d.length; i += 4) {
+        let r = d[i], g = d[i + 1], b = d[i + 2];
+
+        // 1. Slight desaturation — reduce colour casts from lighting
+        const gray = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        const desatFactor = 0.25; // 0 = full grey, 1 = full colour
+        r = r * (1 - desatFactor) + gray * desatFactor;
+        g = g * (1 - desatFactor) + gray * desatFactor;
+        b = b * (1 - desatFactor) + gray * desatFactor;
+
+        // 2. Contrast + brightness lift
+        const contrast = 1.45;
+        const brightness = 18;
+        r = Math.min(255, Math.max(0, contrast * (r - 128) + 128 + brightness));
+        g = Math.min(255, Math.max(0, contrast * (g - 128) + 128 + brightness));
+        b = Math.min(255, Math.max(0, contrast * (b - 128) + 128 + brightness));
+
+        // 3. Warm paper tint on bright areas
+        const luma = 0.299 * r + 0.587 * g + 0.114 * b;
+        if (luma > 200) {
+            r = Math.min(255, r + 6);
+            g = Math.min(255, g + 4);
+            b = Math.max(0, b - 4);
+        }
+
+        d[i] = r; d[i + 1] = g; d[i + 2] = b;
+    }
+    ctx.putImageData(imageData, 0, 0);
+}
+
+/** Open the scanner modal for a specific book */
+window.openDocScanner = async function (bookId) {
+    _scannerTargetBookId = bookId;
+    _scannerCapturedDataUrl = null;
+
+    const modal = document.getElementById('doc-scanner-modal');
+    if (!modal) return;
+
+    _showScannerPhase('camera');
+    modal.classList.add('active');
+    lucide.createIcons();
+
+    try {
+        _scannerStream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+            audio: false
+        });
+        const video = document.getElementById('scanner-video');
+        video.srcObject = _scannerStream;
+        // Start auto-detection once video is playing
+        video.addEventListener('playing', _startAutoDetect, { once: true });
+    } catch (err) {
+        console.warn('Camera unavailable, falling back to file picker:', err);
+        const vf = document.getElementById('scanner-viewfinder');
+        if (vf) vf.style.display = 'none';
+        document.getElementById('scanner-file-input').click();
+    }
+};
+
+// ── Auto-detect state ────────────────────────────────────────────
+let _detectRafId     = null;   // requestAnimationFrame id
+let _detectTimer     = null;   // countdown timeout
+let _detectStable    = false;  // is a document currently detected?
+let _detectCountdown = 0;      // ms remaining before auto-capture
+const AUTO_CAPTURE_DELAY = 1500; // ms to hold steady before capture
+
+/** Start the background frame-analysis loop */
+function _startAutoDetect() {
+    _stopAutoDetect(); // clear any previous loop
+    _detectStable = false;
+    _setFrameState('searching');
+
+    // Offscreen analysis canvas — tiny for speed (160×120)
+    const offscreen = document.createElement('canvas');
+    offscreen.width  = 160;
+    offscreen.height = 120;
+    const octx = offscreen.getContext('2d');
+
+    let lastDetectTime = 0;
+
+    function loop(ts) {
+        if (!_scannerStream) return; // scanner was closed
+
+        // Throttle analysis to ~5 fps (every 200ms) to save CPU
+        if (ts - lastDetectTime >= 200) {
+            lastDetectTime = ts;
+            const video = document.getElementById('scanner-video');
+            if (!video || video.readyState < 2) {
+                _detectRafId = requestAnimationFrame(loop);
+                return;
+            }
+
+            // Draw downscaled frame
+            octx.drawImage(video, 0, 0, 160, 120);
+            const detected = _analyzeEdges(octx, 160, 120);
+
+            if (detected && !_detectStable) {
+                // Document just appeared → start countdown
+                _detectStable = true;
+                _setFrameState('detected');
+                _startCountdown();
+            } else if (!detected && _detectStable) {
+                // Document moved away → cancel countdown
+                _detectStable = false;
+                _setFrameState('searching');
+                _cancelCountdown();
+            }
+        }
+
+        _detectRafId = requestAnimationFrame(loop);
+    }
+
+    _detectRafId = requestAnimationFrame(loop);
+}
+
+/** Stop the detection loop */
+function _stopAutoDetect() {
+    if (_detectRafId) { cancelAnimationFrame(_detectRafId); _detectRafId = null; }
+    _cancelCountdown();
+    _detectStable = false;
+}
+
+/**
+ * Edge-density analysis using a simplified Sobel operator on a 160×120 downscale.
+ * We sample the INNER region of the frame (the guide zone) and check:
+ *   1. Total edge density (are there high-contrast edges = document content?)
+ *   2. Corner-area edges (does this look like a rectangular object?)
+ * Returns true when a document-like object is detected.
+ */
+function _analyzeEdges(ctx, w, h) {
+    const data = ctx.getImageData(0, 0, w, h).data;
+
+    // Focus on the center 60% of the frame (matching our guide frame)
+    const x0 = Math.floor(w * 0.2), x1 = Math.floor(w * 0.8);
+    const y0 = Math.floor(h * 0.1), y1 = Math.floor(h * 0.9);
+
+    let totalEdge = 0;
+    let edgePixels = 0;
+
+    // Sobel on luminance
+    for (let y = y0 + 1; y < y1 - 1; y++) {
+        for (let x = x0 + 1; x < x1 - 1; x++) {
+            const lum = (px, py) => {
+                const i = (py * w + px) * 4;
+                return 0.299 * data[i] + 0.587 * data[i+1] + 0.114 * data[i+2];
+            };
+            const gx = -lum(x-1,y-1) + lum(x+1,y-1)
+                       -2*lum(x-1,y) + 2*lum(x+1,y)
+                       -lum(x-1,y+1) + lum(x+1,y+1);
+            const gy = -lum(x-1,y-1) - 2*lum(x,y-1) - lum(x+1,y-1)
+                       +lum(x-1,y+1) + 2*lum(x,y+1) + lum(x+1,y+1);
+            const mag = Math.sqrt(gx*gx + gy*gy);
+            totalEdge += mag;
+            if (mag > 40) edgePixels++; // strong edge threshold
+        }
+    }
+
+    const roiPixels = (x1 - x0 - 2) * (y1 - y0 - 2);
+    const edgeDensity = edgePixels / roiPixels;
+    const avgEdge    = totalEdge / roiPixels;
+
+    // A book cover has lots of text/art = high edge density
+    // Thresholds tuned for typical book covers under indoor lighting
+    return edgeDensity > 0.06 && avgEdge > 12;
+}
+
+/** Visual state of the guide frame corners */
+function _setFrameState(state) {
+    const frame = document.getElementById('scanner-doc-frame');
+    if (!frame) return;
+    frame.classList.remove('frame-searching', 'frame-detected', 'frame-capturing');
+    frame.classList.add('frame-' + state);
+
+    const label = frame.querySelector('.scanner-frame-label');
+    if (label) {
+        if (state === 'searching') label.textContent = 'Align book cover inside the frame';
+        if (state === 'detected')  label.textContent = 'Hold still…';
+        if (state === 'capturing') label.textContent = 'Scanning ✓';
+    }
+}
+
+/** Begin the 1.5-second auto-capture countdown */
+function _startCountdown() {
+    const frame = document.getElementById('scanner-doc-frame');
+    if (frame) {
+        // Drive a CSS custom property so the SVG ring animates
+        frame.style.setProperty('--countdown-ms', AUTO_CAPTURE_DELAY + 'ms');
+        frame.classList.add('counting');
+    }
+    _detectTimer = setTimeout(() => {
+        if (_detectStable) {
+            _setFrameState('capturing');
+            _stopAutoDetect();
+            _captureFrame();
+        }
+    }, AUTO_CAPTURE_DELAY);
+}
+
+function _cancelCountdown() {
+    if (_detectTimer) { clearTimeout(_detectTimer); _detectTimer = null; }
+    const frame = document.getElementById('scanner-doc-frame');
+    if (frame) frame.classList.remove('counting');
+}
+
+function _showScannerPhase(phase) {
+    const captureCtrl = document.getElementById('scanner-capture-controls');
+    const previewCtrl = document.getElementById('scanner-preview-controls');
+    const viewfinder  = document.getElementById('scanner-viewfinder');
+    const previewWrap = document.getElementById('scanner-preview-wrap');
+
+    if (phase === 'camera') {
+        if (viewfinder)  viewfinder.style.display = '';
+        if (previewWrap) previewWrap.classList.remove('active');
+        if (captureCtrl) captureCtrl.style.display = 'flex';
+        if (previewCtrl) previewCtrl.style.display = 'none';
+    } else {
+        _stopAutoDetect();
+        if (viewfinder)  viewfinder.style.display = 'none';
+        if (previewWrap) previewWrap.classList.add('active');
+        if (captureCtrl) captureCtrl.style.display = 'none';
+        if (previewCtrl) previewCtrl.style.display = 'flex';
+    }
+}
+
+function _closeScanner() {
+    _stopAutoDetect();
+    if (_scannerStream) {
+        _scannerStream.getTracks().forEach(t => t.stop());
+        _scannerStream = null;
+    }
+    const modal = document.getElementById('doc-scanner-modal');
+    if (modal) modal.classList.remove('active');
+    _scannerCapturedDataUrl = null;
+    const vf = document.getElementById('scanner-viewfinder');
+    if (vf) vf.style.display = '';
+    _setFrameState('searching');
+}
+
+function _captureFrame() {
+    const video  = document.getElementById('scanner-video');
+    const canvas = document.getElementById('scanner-preview-canvas');
+    if (!video || !canvas) return;
+
+    const MAX_W = 800, MAX_H = 1067;
+    let srcW = video.videoWidth  || 1280;
+    let srcH = video.videoHeight || 720;
+    let dstW = srcW, dstH = srcH;
+    if (dstW > MAX_W) { dstH = Math.round(dstH * MAX_W / dstW); dstW = MAX_W; }
+    if (dstH > MAX_H) { dstW = Math.round(dstW * MAX_H / dstH); dstH = MAX_H; }
+
+    canvas.width  = dstW;
+    canvas.height = dstH;
+    canvas.getContext('2d').drawImage(video, 0, 0, dstW, dstH);
+
+    const proc = document.getElementById('scanner-processing');
+    if (proc) proc.classList.add('active');
+
+    setTimeout(() => {
+        applyDocScanEffect(canvas);
+        if (proc) proc.classList.remove('active');
+        _scannerCapturedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+        _showScannerPhase('preview');
+    }, 60);
+}
+
+function _processFile(file) {
+    if (!file || !file.type.startsWith('image/')) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+            const MAX_W = 800, MAX_H = 1067;
+            let dstW = img.width, dstH = img.height;
+            if (dstW > MAX_W) { dstH = Math.round(dstH * MAX_W / dstW); dstW = MAX_W; }
+            if (dstH > MAX_H) { dstW = Math.round(dstW * MAX_H / dstH); dstH = MAX_H; }
+
+            const canvas = document.getElementById('scanner-preview-canvas');
+            canvas.width  = dstW;
+            canvas.height = dstH;
+            canvas.getContext('2d').drawImage(img, 0, 0, dstW, dstH);
+
+            const proc = document.getElementById('scanner-processing');
+            if (proc) proc.classList.add('active');
+            setTimeout(() => {
+                applyDocScanEffect(canvas);
+                if (proc) proc.classList.remove('active');
+                _scannerCapturedDataUrl = canvas.toDataURL('image/jpeg', 0.82);
+                const modal = document.getElementById('doc-scanner-modal');
+                if (modal) modal.classList.add('active');
+                _showScannerPhase('preview');
+                lucide.createIcons();
+            }, 60);
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+async function _saveCover() {
+    if (!_scannerCapturedDataUrl || !_scannerTargetBookId) return;
+    const saveBtn = document.getElementById('scanner-save-btn');
+    if (saveBtn) { saveBtn.disabled = true; saveBtn.textContent = 'Saving...'; }
+
+    try {
+        await updateDoc(doc(db, 'books', _scannerTargetBookId), {
+            coverImageBase64: _scannerCapturedDataUrl,
+            coverUpdatedAt:   serverTimestamp()
+        });
+        _closeScanner();
+        _showScannerToast('✅ Cover scan saved successfully!');
+
+        // Patch local cache for instant UI update
+        const local = libraryData.books.find(b => b.id === _scannerTargetBookId);
+        if (local) local.coverImageBase64 = _scannerCapturedDataUrl;
+
+        if (currentView === 'book-detail-view') {
+            const currentBook = libraryData.books.find(b => b.id === _scannerTargetBookId);
+            const req = libraryData.requests.find(r => r.bookId === _scannerTargetBookId);
+            if (currentBook) showBookDetail(currentBook, req);
+        }
+        if (currentView === 'library-view') renderLibraryView();
+    } catch (err) {
+        console.error('Cover save failed:', err);
+        _showScannerToast('❌ Save failed: ' + err.message);
+    } finally {
+        if (saveBtn) {
+            saveBtn.disabled = false;
+            saveBtn.innerHTML = '<i data-lucide="check"></i> Use This Scan';
+            lucide.createIcons();
+        }
+    }
+}
+
+function _showScannerToast(msg) {
+    const t = document.getElementById('scanner-toast');;
+    if (!t) return;
+    t.textContent = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// Wire up all scanner events on DOM ready
+document.addEventListener('DOMContentLoaded', () => {
+    document.getElementById('scanner-close-btn')?.addEventListener('click', _closeScanner);
+
+    // Manual shutter still works (user can tap anytime)
+    document.getElementById('scanner-shutter-btn')?.addEventListener('click', () => {
+        _stopAutoDetect();
+        _captureFrame();
+    });
+
+    document.getElementById('scanner-retake-btn')?.addEventListener('click', () => {
+        _scannerCapturedDataUrl = null;
+        _showScannerPhase('camera');
+        // Restart auto-detect after retake
+        const video = document.getElementById('scanner-video');
+        if (video && _scannerStream) _startAutoDetect();
+    });
+
+    document.getElementById('scanner-save-btn')?.addEventListener('click', _saveCover);
+
+    document.getElementById('scanner-file-input')?.addEventListener('change', (e) => {
+        if (e.target.files?.[0]) _processFile(e.target.files[0]);
+        e.target.value = '';
+    });
+
+    document.getElementById('scanner-flash-btn')?.addEventListener('click', async () => {
+        const btn = document.getElementById('scanner-flash-btn');
+        if (!_scannerStream) return;
+        const track = _scannerStream.getVideoTracks()[0];
+        if (!track) return;
+        try {
+            const current = track.getSettings().torch;
+            await track.applyConstraints({ advanced: [{ torch: !current }] });
+            btn.classList.toggle('on', !current);
+        } catch (_) { /* torch not supported on this device */ }
+    });
+});
+

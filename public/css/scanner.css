@@ -1,0 +1,486 @@
+/* ============================================================
+   DOCUMENT SCANNER MODAL — WhatsApp-style book cover scanner
+   ============================================================ */
+
+/* Full-screen overlay */
+#doc-scanner-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #000;
+    flex-direction: column;
+    align-items: stretch;
+}
+
+#doc-scanner-modal.active {
+    display: flex;
+}
+
+/* Scanner Header Bar */
+.scanner-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    padding-top: max(16px, env(safe-area-inset-top));
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    z-index: 10;
+    flex-shrink: 0;
+}
+
+.scanner-header h3 {
+    color: white;
+    font-size: 17px;
+    font-weight: 700;
+    margin: 0;
+    letter-spacing: -0.2px;
+}
+
+.scanner-header-hint {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 12px;
+    font-weight: 500;
+    text-align: center;
+    margin-top: 2px;
+}
+
+.scanner-close-btn {
+    background: rgba(255, 255, 255, 0.15);
+    border: none;
+    color: white;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    transition: background 0.2s;
+    flex-shrink: 0;
+}
+
+.scanner-close-btn:hover {
+    background: rgba(255, 255, 255, 0.25);
+}
+
+/* Camera viewfinder area */
+.scanner-viewfinder-wrap {
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    background: #000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#scanner-video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+/* Dark vignette overlay on the camera feed */
+.scanner-vignette {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: radial-gradient(ellipse at center, transparent 50%, rgba(0,0,0,0.65) 100%);
+}
+
+/* Document frame guide — the white-border rectangle */
+.scanner-doc-frame {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: min(85%, 340px);
+    /* A4-ish portrait ratio */
+    aspect-ratio: 3 / 4;
+    pointer-events: none;
+    z-index: 5;
+}
+
+/* 4 corner brackets */
+.scanner-corner {
+    position: absolute;
+    width: 28px;
+    height: 28px;
+    border-color: #25D366;
+    border-style: solid;
+    border-width: 0;
+    transition: all 0.3s ease;
+}
+
+.scanner-corner.tl { top: 0; left: 0;   border-top-width: 3.5px; border-left-width: 3.5px;  border-top-left-radius: 4px; }
+.scanner-corner.tr { top: 0; right: 0;  border-top-width: 3.5px; border-right-width: 3.5px; border-top-right-radius: 4px; }
+.scanner-corner.bl { bottom: 0; left: 0;  border-bottom-width: 3.5px; border-left-width: 3.5px;   border-bottom-left-radius: 4px; }
+.scanner-corner.br { bottom: 0; right: 0; border-bottom-width: 3.5px; border-right-width: 3.5px;  border-bottom-right-radius: 4px; }
+
+/* The thin border of the document frame */
+.scanner-doc-border {
+    position: absolute;
+    inset: 0;
+    border: 1.5px solid rgba(37, 211, 102, 0.35);
+    border-radius: 3px;
+    transition: border-color 0.3s ease;
+}
+
+/* Animated scan line sweeping down */
+.scanner-line {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2.5px;
+    background: linear-gradient(90deg, transparent, #25D366 30%, rgba(37,211,102,0.8) 70%, transparent);
+    box-shadow: 0 0 10px rgba(37, 211, 102, 0.8), 0 0 20px rgba(37, 211, 102, 0.4);
+    animation: scan-sweep 2.5s ease-in-out infinite;
+    border-radius: 2px;
+    z-index: 6;
+    transition: opacity 0.3s;
+}
+
+@keyframes scan-sweep {
+    0%   { top: 5%; opacity: 0; }
+    5%   { opacity: 1; }
+    50%  { top: 95%; }
+    95%  { opacity: 1; }
+    100% { top: 95%; opacity: 0; }
+}
+
+/* Guide text inside the frame */
+.scanner-frame-label {
+    position: absolute;
+    bottom: -32px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 13px;
+    font-weight: 700;
+    white-space: nowrap;
+    letter-spacing: 0.3px;
+    transition: color 0.3s ease;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.8);
+}
+
+/* ── AUTO DETECT STATES ── */
+
+/* Searching state: corners pulse slightly */
+.frame-searching .scanner-corner {
+    animation: corner-pulse 1.5s ease-in-out infinite alternate;
+}
+
+@keyframes corner-pulse {
+    0% { transform: scale(1); opacity: 0.7; }
+    100% { transform: scale(1.05); opacity: 1; }
+}
+
+/* Detected state: corners lock tightly, scanline hides */
+.frame-detected .scanner-corner {
+    border-color: #25D366;
+    border-width: 5px;
+    width: 34px;
+    height: 34px;
+    box-shadow: 0 0 12px rgba(37, 211, 102, 0.4);
+}
+.frame-detected .scanner-doc-border {
+    border-color: rgba(37, 211, 102, 0.8);
+}
+.frame-detected .scanner-line {
+    opacity: 0;
+}
+.frame-detected .scanner-frame-label {
+    color: #25D366;
+}
+
+/* Countdown bar around the frame during auto-capture delay */
+.scanner-doc-frame::after {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border: 3px solid transparent;
+    border-radius: 6px;
+    pointer-events: none;
+}
+.scanner-doc-frame.counting::after {
+    border-top-color: #25D366;
+    border-right-color: #25D366;
+    border-bottom-color: #25D366;
+    border-left-color: #25D366;
+    /* Simulate a drawing border by animating clip-path */
+    animation: draw-border var(--countdown-ms) linear forwards;
+}
+
+@keyframes draw-border {
+    0%   { clip-path: polygon(0 0, 0 0, 0 0, 0 0, 0 0); }
+    25%  { clip-path: polygon(0 0, 100% 0, 100% 0, 100% 0, 0 0); }
+    50%  { clip-path: polygon(0 0, 100% 0, 100% 100%, 100% 100%, 0 0); }
+    75%  { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0); }
+    100% { clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0); }
+}
+
+/* Capturing finish flash */
+.frame-capturing::before {
+    content: '';
+    position: absolute;
+    inset: -500px;
+    background: white;
+    z-index: 99;
+    animation: flash 0.3s ease-out forwards;
+}
+
+@keyframes flash {
+    0% { opacity: 0; }
+    30% { opacity: 1; }
+    100% { opacity: 0; }
+}
+
+/* ── PREVIEW phase ──────────────────────────────────────── */
+.scanner-preview-wrap {
+    display: none;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+    align-items: center;
+    justify-content: center;
+    background: #1a1a1a;
+}
+
+.scanner-preview-wrap.active {
+    display: flex;
+}
+
+#scanner-preview-canvas {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 0 40px rgba(0,0,0,0.6);
+}
+
+/* Processing overlay (shown during canvas post-processing) */
+.scanner-processing-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 16px;
+    z-index: 20;
+    color: white;
+    font-weight: 700;
+}
+
+.scanner-processing-overlay.active {
+    display: flex;
+}
+
+.scanner-processing-overlay .scan-spinner {
+    width: 44px;
+    height: 44px;
+    border: 4px solid rgba(37, 211, 102, 0.2);
+    border-top: 4px solid #25D366;
+    border-radius: 50%;
+    animation: spin 0.9s linear infinite;
+}
+
+/* ── Bottom Controls ─────────────────────────────────────── */
+.scanner-controls {
+    padding: 20px 24px;
+    padding-bottom: max(20px, env(safe-area-inset-bottom));
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    flex-shrink: 0;
+    z-index: 10;
+}
+
+/* Capture phase controls */
+.scanner-capture-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+/* Shutter button (big circle) */
+.scanner-shutter-btn {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    background: white;
+    border: 4px solid rgba(255,255,255,0.3);
+    cursor: pointer;
+    position: relative;
+    transition: transform 0.15s cubic-bezier(0.165, 0.84, 0.44, 1);
+    flex-shrink: 0;
+    outline: none;
+    box-shadow: 0 0 0 6px rgba(255,255,255,0.1);
+}
+
+.scanner-shutter-btn::after {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 50%;
+    background: rgba(37, 211, 102, 0.9);
+    transition: background 0.2s;
+}
+
+.scanner-shutter-btn:hover::after { background: #25D366; }
+.scanner-shutter-btn:active { transform: scale(0.88); }
+
+/* File upload alternative */
+.scanner-upload-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1.5px solid rgba(255,255,255,0.25);
+    color: white;
+    padding: 10px 16px;
+    border-radius: 20px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: background 0.2s;
+    white-space: nowrap;
+}
+
+.scanner-upload-btn:hover { background: rgba(255,255,255,0.2); }
+.scanner-upload-btn i { font-size: 16px; }
+
+/* Flash toggle */
+.scanner-flash-btn {
+    background: rgba(255, 255, 255, 0.12);
+    border: 1.5px solid rgba(255,255,255,0.25);
+    color: rgba(255,255,255,0.8);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.scanner-flash-btn.on {
+    background: #f59e0b;
+    border-color: #f59e0b;
+    color: white;
+}
+
+/* Preview phase controls */
+.scanner-preview-controls {
+    display: flex;
+    gap: 12px;
+}
+
+.scanner-retake-btn {
+    flex: 1;
+    background: rgba(255,255,255,0.12);
+    border: 1.5px solid rgba(255,255,255,0.25);
+    color: white;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: background 0.2s;
+    font-family: inherit;
+}
+
+.scanner-retake-btn:hover { background: rgba(255,255,255,0.2); }
+
+.scanner-save-btn {
+    flex: 2;
+    background: linear-gradient(135deg, #128C7E, #25D366);
+    border: none;
+    color: white;
+    padding: 16px;
+    border-radius: 14px;
+    font-size: 15px;
+    font-weight: 700;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: all 0.2s;
+    font-family: inherit;
+    box-shadow: 0 4px 16px rgba(37, 211, 102, 0.35);
+}
+
+.scanner-save-btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px rgba(37, 211, 102, 0.45); }
+.scanner-save-btn:active { transform: scale(0.97); }
+.scanner-save-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+
+/* ── Book cover display in detail view ─────────────────── */
+.book-cover-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: inherit;
+}
+
+.book-cover-img-card {
+    width: 85px;
+    height: 120px;
+    object-fit: cover;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* Add cover button in book detail */
+.btn-add-cover {
+    background: linear-gradient(135deg, #128C7E, #25D366);
+    color: white;
+    border: none;
+    box-shadow: 0 4px 16px rgba(37, 211, 102, 0.3);
+}
+
+.btn-add-cover:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 20px rgba(37, 211, 102, 0.4);
+}
+
+/* Toast notification */
+.scanner-toast {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    background: #128C7E;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 24px;
+    font-size: 14px;
+    font-weight: 700;
+    z-index: 99999;
+    opacity: 0;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    white-space: nowrap;
+    pointer-events: none;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.3);
+}
+
+.scanner-toast.show {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+}
+
+/* Scanned image filter (document effect) */
+.doc-scan-filter {
+    filter: contrast(1.35) brightness(1.08) saturate(0.85);
+}

@@ -35,6 +35,7 @@
     <link rel="stylesheet" href="css/main.css?v=12">
     <link rel="stylesheet" href="css/components.css?v=12">
     <link rel="stylesheet" href="css/desktop.css?v=7">
+    <link rel="stylesheet" href="css/scanner.css?v=1">
 
     <!-- Lucide Icons (Versioned for faster loading & caching) -->
     <script src="https://unpkg.com/lucide@0.363.0"></script>
@@ -753,6 +754,83 @@
 
     <!-- Print Area -->
     <div id="printable-card-area"></div>
+
+    <!-- ══════════════════════════════════════════════════
+         DOCUMENT SCANNER MODAL (WhatsApp-style)
+         ══════════════════════════════════════════════════ -->
+    <div id="doc-scanner-modal" role="dialog" aria-modal="true" aria-label="Scan Book Cover">
+
+        <!-- Header -->
+        <div class="scanner-header">
+            <div>
+                <h3>📚 Scan Book Cover</h3>
+                <div class="scanner-header-hint">Align the book cover inside the frame</div>
+            </div>
+            <button class="scanner-close-btn" id="scanner-close-btn" aria-label="Close scanner">✕</button>
+        </div>
+
+        <!-- ── LIVE CAMERA VIEW ── -->
+        <div class="scanner-viewfinder-wrap" id="scanner-viewfinder">
+            <video id="scanner-video" autoplay playsinline muted></video>
+            <div class="scanner-vignette"></div>
+
+            <!-- Document guide frame with corner brackets and scan line -->
+            <div class="scanner-doc-frame" id="scanner-doc-frame">
+                <div class="scanner-doc-border"></div>
+                <div class="scanner-corner tl"></div>
+                <div class="scanner-corner tr"></div>
+                <div class="scanner-corner bl"></div>
+                <div class="scanner-corner br"></div>
+                <div class="scanner-line"></div>
+                <div class="scanner-frame-label">Book cover fits here</div>
+            </div>
+        </div>
+
+        <!-- ── PREVIEW of captured / scanned image ── -->
+        <div class="scanner-preview-wrap" id="scanner-preview-wrap">
+            <canvas id="scanner-preview-canvas"></canvas>
+            <div class="scanner-processing-overlay" id="scanner-processing">
+                <div class="scan-spinner"></div>
+                <span>Enhancing scan...</span>
+            </div>
+        </div>
+
+        <!-- Hidden file input for fallback -->
+        <input type="file" id="scanner-file-input" accept="image/*" capture="environment" style="display:none">
+
+        <!-- Bottom Controls -->
+        <div class="scanner-controls">
+            <!-- Capture phase -->
+            <div class="scanner-capture-controls" id="scanner-capture-controls">
+                <!-- Gallery / file upload -->
+                <label for="scanner-file-input" class="scanner-upload-btn" title="Upload from gallery">
+                    <i data-lucide="image"></i> Gallery
+                </label>
+
+                <!-- Main shutter button -->
+                <button class="scanner-shutter-btn" id="scanner-shutter-btn" aria-label="Capture"></button>
+
+                <!-- Flash toggle (placeholder — functional on supported browsers) -->
+                <button class="scanner-flash-btn" id="scanner-flash-btn" title="Flash">
+                    <i data-lucide="zap"></i>
+                </button>
+            </div>
+
+            <!-- Preview phase (retake / save) -->
+            <div class="scanner-preview-controls" id="scanner-preview-controls" style="display:none">
+                <button class="scanner-retake-btn" id="scanner-retake-btn">
+                    <i data-lucide="rotate-ccw"></i> Retake
+                </button>
+                <button class="scanner-save-btn" id="scanner-save-btn">
+                    <i data-lucide="check"></i> Use This Scan
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast notification -->
+    <div class="scanner-toast" id="scanner-toast">✓ Cover saved!</div>
+
 
     <!-- Scripts -->
     <script type="module">
