@@ -171,6 +171,7 @@ function showApp() {
     const isDesktop = window.matchMedia('(min-width: 1024px)').matches;
     document.getElementById('admin-app').style.display = isDesktop ? 'grid' : 'flex';
     document.getElementById('header-logout-btn').style.display = 'flex';
+    document.getElementById('header-notif-btn').style.display = 'flex';
     // Keep layout correct on resize
     window.addEventListener('resize', () => {
         const adminApp = document.getElementById('admin-app');
@@ -181,6 +182,8 @@ function showApp() {
     setupListeners();
     setupDataListeners();
     initVoiceFeature();
+    // Request notification permission after a brief delay (less jarring UX)
+    setTimeout(() => requestPushNotificationPermission(), 1500);
     lucide.createIcons();
 }
 
@@ -329,6 +332,92 @@ window.logout = function () {
     });
 };
 
+// ── Push / Browser Notification System ────────────────────────────────────────
+
+/**
+ * Ask the admin for notification permission once.
+ * Saves the current state in localStorage so we don't spam the prompt.
+ */
+export async function requestPushNotificationPermission() {
+    if (!('Notification' in window)) {
+        console.warn('[Notifications] Browser does not support notifications.');
+        return;
+    }
+
+    if (Notification.permission === 'granted') {
+        console.log('[Notifications] Permission already granted.');
+        updateNotificationBtnUI();
+        return;
+    }
+
+    if (Notification.permission === 'denied') {
+        console.warn('[Notifications] Permission denied by user.');
+        updateNotificationBtnUI();
+        return;
+    }
+
+    // 'default' — ask politely
+    const permission = await Notification.requestPermission();
+    console.log('[Notifications] Permission response:', permission);
+    updateNotificationBtnUI();
+}
+
+/** Update the bell icon in the header to reflect current permission state */
+function updateNotificationBtnUI() {
+    const btn = document.getElementById('header-notif-btn');
+    if (!btn) return;
+    if (Notification.permission === 'granted') {
+        btn.style.color = 'var(--primary-light)';
+        btn.style.background = 'rgba(14, 116, 144, 0.1)';
+        btn.title = 'Notifications: ON';
+    } else if (Notification.permission === 'denied') {
+        btn.style.color = 'var(--text-muted)';
+        btn.style.background = 'var(--bg-color)';
+        btn.title = 'Notifications blocked in browser settings';
+    } else {
+        btn.style.color = 'var(--text-secondary)';
+        btn.style.background = 'var(--bg-color)';
+        btn.title = 'Enable Notifications';
+    }
+}
+
+/**
+ * Show a native OS-level browser notification.
+ * Falls back gracefully if permission not granted.
+ * @param {string} title  - Notification title
+ * @param {string} body   - Notification body text
+ * @param {string} tag    - Prevents duplicate notifications for same event
+ */
+export async function sendBrowserNotification(title, body, tag = 'library-alert') {
+    if (!('Notification' in window)) return;
+    if (Notification.permission !== 'granted') return;
+
+    const options = {
+        body,
+        icon: '/icon-512.png',
+        badge: '/favicon.svg',
+        tag,
+        renotify: true,
+        vibrate: [200, 100, 200],
+        data: { url: '/admin.html' }
+    };
+
+    try {
+        // Use service worker for richer notifications (works in background)
+        if ('serviceWorker' in navigator) {
+            const reg = await navigator.serviceWorker.ready;
+            await reg.showNotification(title, options);
+        } else {
+            // Fallback: plain Notification API
+            new Notification(title, options);
+        }
+    } catch (e) {
+        console.warn('[Notifications] Could not show notification:', e);
+        try { new Notification(title, options); } catch (_) {}
+    }
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 function setupListeners() {
     navItems.forEach(item => {
         item.addEventListener('click', () => {
@@ -473,9 +562,16 @@ function setupDataListeners() {
                 if (change.type === "added") {
                     const data = change.doc.data();
                     const name = data.userName || "a member";
+                    const bookTitle = data.bookTitle || 'a book';
                     speakNotification(
                         "Attention librarian. You have a new book request from " + name,
                         "ശ്രദ്ധിക്കുക, പുതിയൊരു ബുക്ക് റിക്വസ്റ്റ് വന്നിട്ടുണ്ട്. അപേക്ഷകൻ " + name
+                    );
+                    // 📲 OS Push Notification
+                    sendBrowserNotification(
+                        '📚 New Book Request',
+                        `${name} has requested "${bookTitle}". Tap to review.`,
+                        'book-request-' + change.doc.id
                     );
                 }
             });
@@ -510,6 +606,12 @@ function setupDataListeners() {
                     speakNotification(
                         "Librarian alert. New membership application from " + name,
                         "ശ്രദ്ധിക്കുക, പുതിയൊരു അംഗത്വ അപേക്ഷ ലഭിച്ചിട്ടുണ്ട്. അപേക്ഷകൻ " + name
+                    );
+                    // 📲 OS Push Notification
+                    sendBrowserNotification(
+                        '👤 New Membership Application',
+                        `${name} has applied for library membership. Tap to review.`,
+                        'member-request-' + change.doc.id
                     );
                 }
             });

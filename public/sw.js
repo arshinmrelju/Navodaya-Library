@@ -1,4 +1,4 @@
-const CACHE_NAME = 'nayodayam-v1';
+const CACHE_NAME = 'nayodayam-v2';
 const OFFLINE_URL = 'offline.html';
 
 const ASSETS_TO_CACHE = [
@@ -94,6 +94,64 @@ self.addEventListener('fetch', (event) => {
                 }
                 return null;
             });
+        })
+    );
+});
+
+// ── Push Notification Handlers ──────────────────────────────────────────────
+
+// Show notification when a push message is received (even when tab is closed)
+self.addEventListener('push', (event) => {
+    let data = {
+        title: 'Navodhayam Library',
+        body: 'You have a new notification.',
+        icon: '/icon-512.png',
+        badge: '/favicon.svg',
+        tag: 'library-alert',
+        data: { url: '/admin.html' }
+    };
+
+    if (event.data) {
+        try {
+            const payload = event.data.json();
+            data = { ...data, ...payload };
+        } catch (e) {
+            data.body = event.data.text();
+        }
+    }
+
+    event.waitUntil(
+        self.registration.showNotification(data.title, {
+            body: data.body,
+            icon: data.icon || '/icon-512.png',
+            badge: data.badge || '/favicon.svg',
+            tag: data.tag || 'library-alert',
+            renotify: true,
+            vibrate: [200, 100, 200],
+            data: data.data || { url: '/admin.html' }
+        })
+    );
+});
+
+// Handle notification click → focus or open the admin tab
+self.addEventListener('notificationclick', (event) => {
+    event.notification.close();
+    const targetUrl = (event.notification.data && event.notification.data.url)
+        ? event.notification.data.url
+        : '/admin.html';
+
+    event.waitUntil(
+        clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+            // Try to focus an existing admin tab
+            for (const client of clientList) {
+                if (client.url.includes('admin.html') && 'focus' in client) {
+                    return client.focus();
+                }
+            }
+            // Otherwise open a new window
+            if (clients.openWindow) {
+                return clients.openWindow(targetUrl);
+            }
         })
     );
 });
