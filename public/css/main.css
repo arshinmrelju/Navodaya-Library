@@ -46,6 +46,18 @@
     -webkit-tap-highlight-color: transparent;
 }
 
+/* Fix iOS automatically turning phone numbers into blue links */
+a[href^="tel:"], 
+a[href^="sms:"], 
+a[x-apple-data-detectors] {
+    color: inherit !important;
+    text-decoration: none !important;
+    font-size: inherit !important;
+    font-family: inherit !important;
+    font-weight: inherit !important;
+    line-height: inherit !important;
+}
+
 body {
     font-family: 'Outfit', 'Inter', sans-serif;
     background-color: var(--bg-color);
