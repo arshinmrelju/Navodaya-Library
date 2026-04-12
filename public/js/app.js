@@ -660,21 +660,26 @@ window.showAlertModal = function (message, title = "Notice", type = 'warning') {
         }
     }
 
-    document.getElementById('alert-modal').style.display = 'flex';
+    const modal = document.getElementById('alert-modal');
+    if (modal) modal.style.display = 'flex';
     if (window.lucide) lucide.createIcons();
 };
 
 window.closeAlertModal = function () {
-    document.getElementById('alert-modal').style.display = 'none';
+    const modal = document.getElementById('alert-modal');
+    if (modal) modal.style.display = 'none';
 };
 
 window.openAuthModal = function (title) {
-    document.getElementById('auth-modal-title').textContent = title;
-    document.getElementById('auth-modal').style.display = 'flex';
+    const titleEl = document.getElementById('auth-modal-title');
+    if (titleEl) titleEl.textContent = title;
+    const modal = document.getElementById('auth-modal');
+    if (modal) modal.style.display = 'flex';
 };
 
 window.closeAuthModal = function () {
-    document.getElementById('auth-modal').style.display = 'none';
+    const modal = document.getElementById('auth-modal');
+    if (modal) modal.style.display = 'none';
 };
 
 window.logoutUser = async function () {

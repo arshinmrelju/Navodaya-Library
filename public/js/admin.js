@@ -1579,12 +1579,14 @@ window.showAlertModal = function (message, title = "Notice", type = 'warning') {
         }
     }
 
-    document.getElementById('alert-modal').style.display = 'flex';
+    const modal = document.getElementById('alert-modal');
+    if (modal) modal.style.display = 'flex';
     if (window.lucide) lucide.createIcons();
 };
 
 window.closeAlertModal = function () {
-    document.getElementById('alert-modal').style.display = 'none';
+    const modal = document.getElementById('alert-modal');
+    if (modal) modal.style.display = 'none';
 };
 
 async function deleteBook(id) {
