@@ -209,6 +209,12 @@
             stroke-linecap="round" stroke-linejoin="round">
             <path d="m6 9 6 6 6-6" />
         </symbol>
+        <symbol id="icon-download" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" x2="12" y1="15" y2="3" />
+        </symbol>
     </svg>
 
     <!-- Top App Bar -->
@@ -258,9 +264,11 @@
                         </svg> My Requests
                     </button>
                     <button id="manual-install-btn" class="btn w-100"
-                        style="padding:20px; font-size:18px; background:var(--primary-light); color:white; display:none;"
+                        style="padding:20px; font-size:18px; background:white; color:var(--text-secondary); border:1px solid var(--border-color); display:none;"
                         onclick="checkPwaStatus(true)">
-                        <i data-lucide="download"></i> Get our App
+                        <svg class="lucide">
+                            <use href="#icon-download" />
+                        </svg> Get our App
                     </button>
                 </div>
 
