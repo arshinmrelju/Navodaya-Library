@@ -1711,7 +1711,12 @@ window.fetchBooksBatch = async function () {
             libraryData.hasMore = false;
         } else {
             const newBooks = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
-            libraryData.books = [...libraryData.books, ...newBooks];
+            // Avoid duplicates
+            newBooks.forEach(nb => {
+                if (!libraryData.books.find(b => b.id === nb.id)) {
+                    libraryData.books.push(nb);
+                }
+            });
             libraryData.lastVisible = snapshot.docs[snapshot.docs.length - 1];
 
             if (snapshot.docs.length < batchSize) {
@@ -2259,19 +2264,29 @@ function renderSelectionList(type, filterText = '') {
             (b.stock_number && b.stock_number.toString().includes(filter))
         );
 
-        if (filtered.length === 0) {
+        // Ensure uniqueness in results
+        const uniqueFiltered = [];
+        const seenIds = new Set();
+        filtered.forEach(b => {
+            if (!seenIds.has(b.id)) {
+                seenIds.add(b.id);
+                uniqueFiltered.push(b);
+            }
+        });
+
+        if (uniqueFiltered.length === 0) {
             list.innerHTML = '<p style="text-align:center; color:var(--text-muted); padding:20px;">No available books found.</p>';
             return;
         }
 
-        filtered.forEach(b => {
+        uniqueFiltered.forEach(b => {
             const item = document.createElement('div');
             item.className = 'selection-item';
             item.innerHTML = `
                 <div class="item-avatar"><i data-lucide="book"></i></div>
                 <div class="item-info">
                     <p class="item-title">${b.title}</p>
-                    <p class="item-subtitle">${b.author} | Shelf: ${b.shelf_number || 'N/A'}</p>
+                    <p class="item-subtitle">${b.author} | Shelf: ${b.shelf_number || 'N/A'} | #${b.stock_number || '---'}</p>
                 </div>
             `;
             item.onclick = () => window.executeDirectBorrow(selectionContext.targetId, b.id);
