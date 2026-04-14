@@ -105,7 +105,8 @@ let libraryData = {
     pendingRequestCount: 0,
     attendedCount: 0,
     reportMonth: new Date().getMonth(),
-    reportYear: new Date().getFullYear()
+    reportYear: new Date().getFullYear(),
+    lastReportStats: null
 };
 
 export function initAdmin() {
@@ -2759,6 +2760,7 @@ async function fetchMonthlyReport(month, year) {
 }
 
 function renderReports(stats) {
+    libraryData.lastReportStats = stats;
     const content = document.getElementById('report-content');
     const handled = stats.approved + stats.rejected;
     const successRate = handled > 0 ? Math.round((stats.approved / handled) * 100) : 0;
@@ -2825,5 +2827,74 @@ function renderReports(stats) {
 }
 
 window.printReport = function() {
-    window.print();
+    const stats = libraryData.lastReportStats;
+    if (!stats) {
+        showAlertModal("No report data available to print. Please generate a report first.", "Notice");
+        return;
+    }
+
+    const printArea = document.getElementById('printable-card-area');
+    const handled = stats.approved + stats.rejected;
+    const successRate = handled > 0 ? Math.round((stats.approved / handled) * 100) : 0;
+    const currentDate = new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+    printArea.innerHTML = `
+        <div class="print-list" style="width: 100%; max-width: 850px; margin: 0 auto; font-family: 'Inter', sans-serif; padding: 30px; -webkit-print-color-adjust: exact; print-color-adjust: exact;">
+            <div style="text-align: center; margin-bottom: 30px; border-bottom: 2px solid #e2e8f0; padding-bottom: 20px;">
+                <h1 style="color: #083344; font-size: 32px; font-weight: 800; margin: 0; font-family: 'Outfit', sans-serif; display: flex; align-items: center; justify-content: center; gap: 12px;">
+                    <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color: #0fa3b1;"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></svg>
+                    Navodhayam Library
+                </h1>
+                <h2 style="color: #64748b; font-size: 14px; margin: 8px 0 0 0; text-transform: uppercase; letter-spacing: 2px; font-weight: 700;">Monthly Activity Report</h2>
+                <div style="display: flex; justify-content: center; gap: 12px; margin-top: 16px;">
+                    <span style="background: #f1f5f9; padding: 6px 14px; border-radius: 20px; color: #475569; font-size: 12px; font-weight: 600;">Generated: ${currentDate}</span>
+                    <span style="background: #e0f2fe; padding: 6px 14px; border-radius: 20px; color: #0284c7; font-size: 12px; font-weight: 600;">Period: ${stats.month} ${stats.year}</span>
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px;">
+                <div style="padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0; background: #f8fafc;">
+                    <p style="font-size: 11px; font-weight: 800; color: #64748b; text-transform: uppercase; margin: 0 0 8px 0;">Total Requests</p>
+                    <p style="font-size: 32px; font-weight: 800; color: #083344; margin: 0;">${stats.total}</p>
+                </div>
+                <div style="padding: 20px; border-radius: 16px; border: 1px solid #dcfce7; background: #f0fdf4;">
+                    <p style="font-size: 11px; font-weight: 800; color: #166534; text-transform: uppercase; margin: 0 0 8px 0;">Successful Loans</p>
+                    <p style="font-size: 32px; font-weight: 800; color: #166534; margin: 0;">${stats.approved}</p>
+                </div>
+                <div style="padding: 20px; border-radius: 16px; border: 1px solid #ffe4e6; background: #fff1f2;">
+                    <p style="font-size: 11px; font-weight: 800; color: #9f1239; text-transform: uppercase; margin: 0 0 8px 0;">Rejected Requests</p>
+                    <p style="font-size: 32px; font-weight: 800; color: #9f1239; margin: 0;">${stats.rejected}</p>
+                </div>
+                <div style="padding: 20px; border-radius: 16px; border: 1px solid #fef3c7; background: #fdfaf1;">
+                    <p style="font-size: 11px; font-weight: 800; color: #92400e; text-transform: uppercase; margin: 0 0 8px 0;">Books Returned</p>
+                    <p style="font-size: 32px; font-weight: 800; color: #92400e; margin: 0;">${stats.returned}</p>
+                </div>
+            </div>
+
+            <div style="padding: 24px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 30px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                    <span style="font-size: 14px; font-weight: 700; color: #083344;">Processing Completion</span>
+                    <span style="font-size: 14px; font-weight: 800; color: #0fa3b1;">${successRate}% Success Rate</span>
+                </div>
+                <div style="width: 100%; height: 10px; background: #f1f5f9; border-radius: 10px; overflow: hidden;">
+                    <div style="width: ${stats.total > 0 ? (handled/stats.total)*100 : 0}%; height: 100%; background: #083344; border-radius: 10px;"></div>
+                </div>
+                <p style="font-size: 12px; color: #64748b; margin: 12px 0 0 0;">
+                    Out of ${stats.total} total requests received in ${stats.month}, ${handled} were finalized (${stats.approved} approved, ${stats.rejected} rejected).
+                    There are currently ${stats.pending} requests remaining in pending status.
+                </p>
+            </div>
+
+            <div style="margin-top: 50px; font-size: 11px; color: #94a3b8; text-align: center; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="opacity: 0.5;"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="12" r="3"/></svg>
+                <p style="margin: 0;">Official Library Analytics Record - Nayodayam Library - Wayanad, Kerala</p>
+                <p style="margin: 0; opacity: 0.7;">This report is automatically generated by the Navodhayam Library Management System.</p>
+            </div>
+        </div>
+    `;
+
+    // Small delay to ensure DOM is updated before print dialog
+    setTimeout(() => {
+        window.print();
+    }, 150);
 };
