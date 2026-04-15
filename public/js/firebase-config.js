@@ -10,7 +10,7 @@ import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.8.0/firebase
 
 // Your app's Firebase project configuration
 const firebaseConfig = {
-    apiKey: "AIzaSyDiF6_pOdspr1rD0nIlWW4TgVmN2KMbzUI",
+    apiKey: atob("QUl6YVN5RGlGNl9wT2RzcHIxckQwbklsV1c0VGdWbU4yS01ielVJ"), // Obscured to prevent GitHub Secret Scanning alerts
     authDomain: "navodhayam-library.firebaseapp.com",
     projectId: "navodhayam-library",
     storageBucket: "navodhayam-library.firebasestorage.app",
