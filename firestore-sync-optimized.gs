@@ -254,10 +254,37 @@ function syncMembersFromSheet() {
   props.setProperty('LAST_SYNC_ROW_MEMBERS', lastRow.toString());
   
   if (syncCount > 0) {
+    updateSyncStatsMember();
     SpreadsheetApp.getUi().alert(`Successfully created/updated ${syncCount} members in Firestore!`);
   } else {
     SpreadsheetApp.getUi().alert("No changes detected. All members are already in Firestore.");
   }
+}
+
+/**
+ * 📊 UPDATE MEMBER SYNC STATS
+ */
+function updateSyncStatsMember() {
+  const token = ScriptApp.getOAuthToken();
+  const url = `https://firestore.googleapis.com/v1/projects/${FIREBASE_CONFIG.project_id}/databases/(default)/documents/metadata/sync_stats`;
+  
+  const stats = {
+    last_member_sync: new Date().toISOString()
+  };
+
+  const options = {
+    method: "patch",
+    contentType: "application/json",
+    headers: { Authorization: "Bearer " + token },
+    payload: JSON.stringify({
+      fields: encodeFirestoreFields(stats)
+    }),
+    muteHttpExceptions: true
+  };
+
+  // Use updateMask to specifically update ONLY the last_member_sync field
+  const mask = "?updateMask.fieldPaths=last_member_sync";
+  UrlFetchApp.fetch(url + mask, options);
 }
 
 /**

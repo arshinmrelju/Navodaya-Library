@@ -156,8 +156,48 @@ let libraryData = {
     attendedCount: 0,
     reportMonth: new Date().getMonth(),
     reportYear: new Date().getFullYear(),
-    lastReportStats: null
+    lastReportStats: null,
+    lastMemberSyncTime: localStorage.getItem('navodhayam_members_sync_time') || null
 };
+
+// ── MEMBER CACHING UTILITIES ──────────────────────────────────────────────
+const CACHE_KEYS = {
+    MEMBERS: 'navodhayam_members_cache',
+    SYNC_TIME: 'navodhayam_members_sync_time'
+};
+
+function saveMembersToCache(members, syncTime) {
+    try {
+        localStorage.setItem(CACHE_KEYS.MEMBERS, JSON.stringify(members));
+        localStorage.setItem(CACHE_KEYS.SYNC_TIME, syncTime);
+        console.log(`[Cache] Saved ${members.length} members with sync time: ${syncTime}`);
+    } catch (e) {
+        console.warn("[Cache] Failed to save to localStorage (likely quota exceeded):", e);
+    }
+}
+
+function loadMembersFromCache() {
+    try {
+        const cached = localStorage.getItem(CACHE_KEYS.MEMBERS);
+        const syncTime = localStorage.getItem(CACHE_KEYS.SYNC_TIME);
+        if (cached && syncTime) {
+            return {
+                members: JSON.parse(cached),
+                syncTime: syncTime
+            };
+        }
+    } catch (e) {
+        console.warn("[Cache] Failed to load from localStorage:", e);
+    }
+    return null;
+}
+
+function clearMembersCache() {
+    localStorage.removeItem(CACHE_KEYS.MEMBERS);
+    localStorage.removeItem(CACHE_KEYS.SYNC_TIME);
+    console.log("[Cache] Members cache cleared.");
+}
+// ────────────────────────────────────────────────────────────────────────────
 
 export function initAdmin() {
     // Register Service Worker for PWA
@@ -931,7 +971,31 @@ function setupSyncProgress() {
             }
             lucide.createIcons();
         }
+
+        // 🚀 CACHE INVALIDATION LOGIC
+        if (data.last_member_sync) {
+            const firestoreMemberSyncTime = data.last_member_sync;
+            const cachedSyncTime = localStorage.getItem(CACHE_KEYS.SYNC_TIME);
+
+            if (cachedSyncTime && firestoreMemberSyncTime !== cachedSyncTime) {
+                console.log("[Cache] Sync detected! Invaliding members cache...");
+                clearMembersCache();
+                // If we are currently in the members view, we should probably reload
+                if (currentView === 'members-view') {
+                    resetMembersPagination();
+                    fetchMembersBatch();
+                }
+            }
+            libraryData.lastMemberSyncTime = firestoreMemberSyncTime;
+        }
     });
+}
+
+function resetMembersPagination() {
+    libraryData.members = libraryData.members.filter(m => m.status === 'pending'); // Keep real-time pending ones
+    libraryData.membersLastVisible = null;
+    libraryData.membersHasMore = true;
+    libraryData.isMembersLoading = false;
 }
 
 function navigateTo(viewId) {
@@ -1322,6 +1386,25 @@ function renderMembers() {
 async function fetchMembersBatch() {
     if (libraryData.isMembersLoading || !libraryData.membersHasMore) return;
 
+    // 🚀 ATTEMPT TO LOAD FROM CACHE (Only on first load of approved members)
+    if (!libraryData.membersLastVisible) {
+        const cachedData = loadMembersFromCache();
+        const serverSyncTime = libraryData.lastMemberSyncTime;
+
+        if (cachedData && serverSyncTime && cachedData.syncTime === serverSyncTime) {
+            console.log(`[Cache] Serving ${cachedData.members.length} members from local storage.`);
+            
+            // Merge with existing pending members
+            const pendings = libraryData.members.filter(m => m.status === 'pending');
+            libraryData.members = [...pendings, ...cachedData.members];
+            
+            libraryData.membersHasMore = false; // We loaded the full cached set
+            libraryData.isMembersLoading = false;
+            renderMembers();
+            return;
+        }
+    }
+
     libraryData.isMembersLoading = true;
     renderMembers();
 
@@ -1349,7 +1432,14 @@ async function fetchMembersBatch() {
                 }
             });
             libraryData.membersLastVisible = snapshot.docs[snapshot.docs.length - 1];
-            if (snapshot.docs.length < batchSize) libraryData.membersHasMore = false;
+            if (snapshot.docs.length < batchSize) {
+                libraryData.membersHasMore = false;
+                // 🚀 SAVE TO CACHE (Once fully loaded)
+                const approvedOnly = libraryData.members.filter(m => m.status === 'approved');
+                if (libraryData.lastMemberSyncTime) {
+                    saveMembersToCache(approvedOnly, libraryData.lastMemberSyncTime);
+                }
+            }
         }
     } catch (e) {
         console.error("Error fetching members:", e);
