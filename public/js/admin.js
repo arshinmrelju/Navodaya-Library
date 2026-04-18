@@ -22,6 +22,8 @@ import {
     where,
     deleteField
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+import { NetworkMonitor } from './network-monitor.js';
+
 
 /** 
  * 🛠️ REMOTE LOGGER
@@ -252,7 +254,11 @@ export function initAdmin() {
     setupBackgroundKeepAlive();
     setupServiceWorkerMessaging();
     
+    // Initialize Network Monitor
+    new NetworkMonitor();
+
     // Check PWA status (no auto-prompt for admin, only manual/debug for now)
+
     checkPwaStatus();
 
     lucide.createIcons();
@@ -677,7 +683,12 @@ function setupListeners() {
             lastSyncClickTime = now;
 
             if (syncClickCount === 3) {
+                if (NetworkMonitor.state === 'offline') {
+                    showAlertModal("Sync is unavailable in offline mode.", "Offline", "error");
+                    return;
+                }
                 const container = document.getElementById('sync-progress-container');
+
                 if (container) {
                     container.style.display = 'block';
                     showAlertModal("Sync details revealed!", "Debug Mode");

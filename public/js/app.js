@@ -19,6 +19,8 @@ import {
     onAuthStateChanged,
     signOut
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+import { NetworkMonitor } from './network-monitor.js';
+
 
 // Global Exports for inline onclick handlers
 window.navigateTo = navigateTo;
@@ -72,6 +74,10 @@ export function initApp() {
                 .catch(err => console.log('[PWA] Service Worker failed:', err));
         });
     }
+
+    // Initialize Network Monitor
+    new NetworkMonitor();
+
 
     // Populate DOM references
     views = document.querySelectorAll('.view');
